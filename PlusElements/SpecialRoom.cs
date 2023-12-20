@@ -2,7 +2,7 @@
 
 namespace BBP_Gen.Elements
 {
-    public struct SpecialRoomCreator(MinMax<IntVector2> RandomSizes, string name, bool stickToHalls = true) // Apparently putting as struct works aswell, neat.
+    public struct SpecialRoomCreator(MinMax<IntVector2> RandomSizes, string name, bool stickToHalls = true) : IRoomStructure // Apparently putting as struct works aswell, neat.
 	{
 		private IntVector2 size = new(1, 1); // actual size
 		private MinMax<IntVector2> _rSizes = RandomSizes; // The random sizes available
@@ -13,13 +13,13 @@ namespace BBP_Gen.Elements
 		private readonly string name = name;
 		private Generator? gen;
 
-		int id; // The room id
-
-		public readonly int ID => id;
-
 		public IntVector2 Size { readonly get => size; set => size = value; } // get from here
 
-		public readonly IntVector2 MaxSize => maxSizes;
+		public RoomType Type { readonly get; set; } = RoomType.SpecialRoom;
+
+		public IntVector2 MaxSize { readonly get => maxSizes; set => maxSizes = value; }
+
+		public List<IntVector2> Spots { get; set; } = [];
 
 		public IntVector2 Pos { readonly get => pos; set => pos = value; }
 
@@ -36,9 +36,8 @@ namespace BBP_Gen.Elements
 			SetSize();
 			if (gen is not null) // Nuh uh, it can't be null
 			{
-				id = gen.NewRoomID;
 				pos = gen.RandomRoomSpawn;
-				gen.AddNewArea(id, pos);
+				gen.AddNewArea(this, pos);
 			}
 		}
 

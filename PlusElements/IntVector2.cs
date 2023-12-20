@@ -50,6 +50,8 @@ public struct IntVector2(int x , int z)
 	public int x = x;
 
 	public int z = z;
+
+	public static readonly IntVector2 MaxValue = new(int.MaxValue, int.MaxValue);
 }
 
 public static class IntVector2_Extensions

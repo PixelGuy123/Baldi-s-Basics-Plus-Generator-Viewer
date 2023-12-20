@@ -22,3 +22,7 @@ public class PartyEvent() : RandomEvent("Party Event")
 }
 
 public class GenericEvent(string name) : RandomEvent(name);
+
+public class MysteryRoomEvent() : RandomEvent("Mystery Room")
+{
+}

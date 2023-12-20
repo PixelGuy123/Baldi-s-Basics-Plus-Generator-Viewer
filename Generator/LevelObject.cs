@@ -18,5 +18,11 @@ int EdgeBuffer,
 MinMax<IntVector2> RoomSizes,
 float CenterWeightMultiplier,
 float PerimeterBase,
-    WeightedSelection<RandomEvent>[] RandomEvents,
-    WeightedSelection<SpecialRoomCreator>[] SpecialRooms);
+WeightedSelection<RandomEvent>[] RandomEvents,
+WeightedSelection<SpecialRoomCreator>[] SpecialRooms,
+int HallBuffer,
+int RoomBuffer,
+int MinPlotSize,
+int BridgeTurnChance,
+int MaxHallAttempts,
+int AdditionTurnChance);

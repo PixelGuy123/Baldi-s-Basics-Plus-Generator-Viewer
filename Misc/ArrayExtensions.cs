@@ -26,7 +26,11 @@ public static class ArrayExtensions
         return rArray;
     }
 
-    public static bool InsideBounds<T>(this T[,] array, int x, int y) => x >= 0 && x < array.GetLength(0) && y >= 0 && y < array.GetLength(1);
+	public static void WriteEverythingOnLine<T>(this IEnumerable<T> collection) => collection.Do(x => Console.WriteLine(x));
+
+	public static void WriteEverythingOnLine<T>(this IEnumerable<T> collection, string prefix) => collection.Do(x => Console.WriteLine("{0}{1}", prefix, x));
+
+	public static bool InsideBounds<T>(this T[,] array, int x, int y) => x >= 0 && x < array.GetLength(0) && y >= 0 && y < array.GetLength(1);
 
     public static bool InsideBounds<T>(this T[,] array, IntVector2 pos) => array.InsideBounds(pos.x, pos.z);
 
