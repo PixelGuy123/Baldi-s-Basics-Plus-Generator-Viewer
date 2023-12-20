@@ -1,6 +1,5 @@
 ﻿using BBP_Gen.Elements;
-using BBP_Gen.Main;
-using BBP_Gen.Utils;
+using BBP_Gen.Misc;
 
 namespace BBP_Gen.PlusGenerator;
 
