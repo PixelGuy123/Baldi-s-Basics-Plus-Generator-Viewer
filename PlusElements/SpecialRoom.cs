@@ -1,9 +1,8 @@
-﻿using BBP_Gen.Main;
-
+﻿using BBP_Gen.PlusGenerator;
 
 namespace BBP_Gen.Elements
 {
-	public struct SpecialRoomCreator(MinMax<IntVector2> RandomSizes, string name, bool stickToHalls = true) // Apparently putting as struct works aswell, neat.
+    public struct SpecialRoomCreator(MinMax<IntVector2> RandomSizes, string name, bool stickToHalls = true) // Apparently putting as struct works aswell, neat.
 	{
 		private IntVector2 size = new(1, 1); // actual size
 		private MinMax<IntVector2> _rSizes = RandomSizes; // The random sizes available
