@@ -9,5 +9,6 @@ public enum RoomType : uint // This makes a 2-base number, idk how it does it, b
 	SpecialRoom = 1 << 2,
 	FieldTripRoom = 1 << 3,
 	Buffer = 1 << 4,
-	Border = 1 << 5
+	Border = 1 << 5,
+	Elevator = 1 << 6
 }

@@ -370,9 +370,8 @@ public partial class Generator // Partial class, so I can organize better, these
 		for (int i = 1; i <= distance; i++)
 		{
 			var npos = pos + dir.ToIntVector2() * i;
-			if (!mapTiles.InsideBounds(npos)) return false;
 
-			if (mapTiles[npos.x, npos.z] != RoomType.None && !buffer[npos.x, npos.z])
+			if (mapTiles.InsideBounds(npos) && mapTiles[npos.x, npos.z] != RoomType.None)
 				return true;
 		}
 		return false;
@@ -499,5 +498,29 @@ public partial class Generator // Partial class, so I can organize better, these
 		}
 	}
 
+
+	private bool ElevatorSpotFits(IntVector2 pos, Direction dir)
+	{
+		var frontpos = pos + dir.ToIntVector2();
+		return IsTileNull(frontpos) && IsTileNull(frontpos + dir.PerpendicularList()[0].ToIntVector2()) && IsTileNull(frontpos + dir.PerpendicularList()[1].ToIntVector2()) && IsTileNull(pos);
+	}
+
+	private bool IsTileNotNull(IntVector2 pos) => mapTiles.InsideBounds(pos) && mapTiles[pos.x, pos.z] != RoomType.None;
+
+	private bool IsTileNull(IntVector2 pos) => mapTiles.InsideBounds(pos) && mapTiles[pos.x, pos.z] == RoomType.None;
+
+	private void CreateElevator(IntVector2 pos, Direction dir, bool isSpawn)
+	{
+		if (isSpawn)
+			spawnSpot = pos;
+
+		mapTiles[pos.x, pos.z] = RoomType.Elevator;
+		pos += dir.ToIntVector2();
+		mapTiles[pos.x, pos.z] = RoomType.Elevator;
+		var left = pos + dir.PerpendicularList()[0].ToIntVector2();
+		mapTiles[left.x, left.z] = RoomType.Elevator;
+		var right = pos + dir.PerpendicularList()[1].ToIntVector2();
+		mapTiles[right.x, right.z] = RoomType.Elevator;
+	}
 
 }

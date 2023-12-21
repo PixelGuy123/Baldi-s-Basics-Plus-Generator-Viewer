@@ -2,7 +2,7 @@
 
 namespace BBP_Gen.Elements
 {
-    public struct SpecialRoomCreator(MinMax<IntVector2> RandomSizes, string name, bool stickToHalls = true) : IRoomStructure // Apparently putting as struct works aswell, neat.
+    public struct SpecialRoomCreator(MinMax<IntVector2> RandomSizes, string name, bool stickToHalls = true, bool acceptExits = false) : IRoomStructure // Apparently putting as struct works aswell, neat.
 	{
 		private IntVector2 size = new(1, 1); // actual size
 		private MinMax<IntVector2> _rSizes = RandomSizes; // The random sizes available
@@ -12,6 +12,8 @@ namespace BBP_Gen.Elements
 		private Random cRNG = new(); // RNG
 		private readonly string name = name;
 		private Generator? gen;
+
+		public bool AcceptExits { get; set; } = acceptExits;
 
 		public IntVector2 Size { readonly get => size; set => size = value; } // get from here
 

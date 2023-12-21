@@ -25,4 +25,6 @@ int RoomBuffer,
 int MinPlotSize,
 int BridgeTurnChance,
 int MaxHallAttempts,
-int AdditionTurnChance);
+int AdditionTurnChance,
+int DeadEndBuffer,
+int ExitCount);
