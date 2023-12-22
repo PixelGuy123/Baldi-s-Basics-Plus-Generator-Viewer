@@ -1,4 +1,6 @@
 ﻿using System.Diagnostics.CodeAnalysis;
+using System.Numerics;
+using System.Runtime.CompilerServices;
 
 namespace BBP_Gen.Elements;
 
@@ -99,4 +101,11 @@ public static class IntVector2_Extensions
 		}
 		return intVector;
 	}
+}
+
+public static class VectorExtensions
+{
+	public static float Magnitude(this Vector2 v) => (float)Math.Sqrt((double)(v.X * v.X + v.Y * v.Y));
+
+	public static float Magnitude(this Vector3 v) => (float)Math.Sqrt((double)(v.X * v.X + v.Y * v.Y + v.Z * v.Z));
 }

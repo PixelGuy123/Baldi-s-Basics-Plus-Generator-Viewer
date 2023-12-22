@@ -26,7 +26,6 @@ namespace BBP_Gen.Elements
             {
                 return items[j].selection;
             }
-            ConsoleLogger.DirectLog("No valid selection found. Returning index 0", ConsoleColor.Red);
             return items[0].selection;
         }
 

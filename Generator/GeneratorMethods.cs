@@ -1,5 +1,6 @@
 ﻿using BBP_Gen.Elements;
 using BBP_Gen.Misc;
+using System.Numerics;
 
 namespace BBP_Gen.PlusGenerator;
 
@@ -27,13 +28,13 @@ public partial class Generator // Partial class, so I can organize better, these
 
 				{
 					var tileNeighbors = GetTileNeighbors(intVector);
-					if (tileNeighbors.Count > 0 && FreeSpaceCheck(intVector, ld.RoomSizes.Min.x))
+					if (IsTileNull(intVector) && tileNeighbors.Count > 0 && FreeSpaceCheck(intVector, ld.RoomSizes.Min.x))
 					{
 						bool flag = true;
 						
 						foreach (var t in tileNeighbors)
 						{
-							if (mapTiles[t.x, t.z].HasFlag(RoomType.FieldTripRoom))
+							if (mapTiles[t.x, t.z].HasFlag(RoomType.FieldTripRoom) || buffer[t.x, t.z] || mapTiles[t.x, t.z].HasFlag(RoomType.Elevator))
 							{
 								flag = false;
 								break;
@@ -380,6 +381,7 @@ public partial class Generator // Partial class, so I can organize better, these
 	private void AddHall(IntVector2 pos)
 	{
 		mapTiles[pos.x, pos.z] = RoomType.Hall;
+		roomTiles[pos.x, pos.z] = hall;
 		halls.Add(pos);
 	}
 
@@ -499,15 +501,19 @@ public partial class Generator // Partial class, so I can organize better, these
 	}
 
 
-	private bool ElevatorSpotFits(IntVector2 pos, Direction dir)
+	private bool ElevatorSpotFits(IntVector2 pos, Direction dir, RoomType type)
 	{
 		var frontpos = pos + dir.ToIntVector2();
-		return IsTileNull(frontpos) && IsTileNull(frontpos + dir.PerpendicularList()[0].ToIntVector2()) && IsTileNull(frontpos + dir.PerpendicularList()[1].ToIntVector2()) && IsTileNull(pos);
+		var moreFrontPos = pos + (dir.ToIntVector2() * 2);
+		return IsTileNull(frontpos) && IsTileNull(frontpos + dir.PerpendicularList()[0].ToIntVector2()) && IsTileNull(frontpos + dir.PerpendicularList()[1].ToIntVector2()) && IsTileNull(pos)
+			&& IsTileEqual(moreFrontPos, type) && IsTileEqual(moreFrontPos + dir.PerpendicularList()[0].ToIntVector2(), type) && IsTileEqual(moreFrontPos + dir.PerpendicularList()[1].ToIntVector2(), type);
 	}
 
 	private bool IsTileNotNull(IntVector2 pos) => mapTiles.InsideBounds(pos) && mapTiles[pos.x, pos.z] != RoomType.None;
 
 	private bool IsTileNull(IntVector2 pos) => mapTiles.InsideBounds(pos) && mapTiles[pos.x, pos.z] == RoomType.None;
+
+	private bool IsTileEqual(IntVector2 pos, RoomType match) => IsTileNotNull(pos) && mapTiles[pos.x, pos.z] == match;
 
 	private void CreateElevator(IntVector2 pos, Direction dir, bool isSpawn)
 	{
@@ -522,5 +528,192 @@ public partial class Generator // Partial class, so I can organize better, these
 		var right = pos + dir.PerpendicularList()[1].ToIntVector2();
 		mapTiles[right.x, right.z] = RoomType.Elevator;
 	}
+
+	private List<RoomType> RoomProximityList(IRoomStructure room, int buffer)
+	{
+		List<RoomType> list = [];
+		List<Direction> list2 =
+		[
+			Direction.North,
+			Direction.East,
+			Direction.South,
+			Direction.West
+		];
+		IntVector2 position = room.Pos;
+		IntVector2 size = room.Size;
+		for (int i = 0; i < list2.Count; i++)
+		{
+			IntVector2 intVector = list2[i].ToIntVector2();
+			for (int j = Math.Max(size.x * intVector.x + -1 * intVector.x - buffer * Math.Abs(intVector.z), 0 - buffer * Math.Abs(intVector.z)); j < Math.Max(size.x * (Math.Abs(intVector.z) + intVector.x) + buffer * Math.Abs(intVector.z), 1); j++)
+			{
+				for (int k = Math.Max(size.z * intVector.z + -1 * intVector.z - buffer * Math.Abs(intVector.x), 0 - buffer * Math.Abs(intVector.x)); k < Math.Max(size.z * (Math.Abs(intVector.x) + intVector.z) + buffer * Math.Abs(intVector.x), 1); k++)
+				{
+					IntVector2 intVector2 = new(position.x + j + intVector.x + buffer * intVector.x, position.z + k + intVector.z + buffer * intVector.z);
+					if (IsTileNotNull(intVector2) && !list.Contains(mapTiles[intVector2.x, intVector2.z]))
+						list.Add(mapTiles[intVector2.x, intVector2.z]);
+					
+				}
+			}
+		}
+		return list;
+	}
+
+	private List<Room> RoomProximityList_Ref(IRoomStructure room, int buffer)
+	{
+		List<Room> list = [];
+		List<Direction> list2 =
+		[
+			Direction.North,
+			Direction.East,
+			Direction.South,
+			Direction.West
+		];
+		IntVector2 position = room.Pos;
+		IntVector2 size = room.Size;
+		for (int i = 0; i < list2.Count; i++)
+		{
+			IntVector2 intVector = list2[i].ToIntVector2();
+			for (int j = Math.Max(size.x * intVector.x + -1 * intVector.x - buffer * Math.Abs(intVector.z), 0 - buffer * Math.Abs(intVector.z)); j < Math.Max(size.x * (Math.Abs(intVector.z) + intVector.x) + buffer * Math.Abs(intVector.z), 1); j++)
+			{
+				for (int k = Math.Max(size.z * intVector.z + -1 * intVector.z - buffer * Math.Abs(intVector.x), 0 - buffer * Math.Abs(intVector.x)); k < Math.Max(size.z * (Math.Abs(intVector.x) + intVector.z) + buffer * Math.Abs(intVector.x), 1); k++)
+				{
+					IntVector2 intVector2 = new(position.x + j + intVector.x + buffer * intVector.x, position.z + k + intVector.z + buffer * intVector.z);
+					if (IsTileNotNull(intVector2) && roomTiles[intVector2.x, intVector2.z] != null && !list.Contains(roomTiles[intVector2.x, intVector2.z]))
+						list.Add(roomTiles[intVector2.x, intVector2.z]);
+
+				}
+			}
+		}
+		return list;
+	}
+
+
+
+
+	static Vector2 RealRoomMin(Room room)
+	{
+		return new Vector2(room.Pos.x * 10f, room.Pos.z * 10f);
+	}
+	static Vector2 RealRoomMax(Room room)
+	{
+		return new Vector2(room.Pos.x * 10f + room.Size.x * 10f, room.Pos.z * 10f + room.Size.z * 10f);
+	}
+	static Vector2 RealRoomSize(Room room)
+	{
+		return RealRoomMax(room) - RealRoomMin(room);
+	}
+
+	static Vector2 RealRoomMid(Room room)
+	{
+		return RealRoomSize(room) / 2f + RealRoomMin(room);
+	}
+
+
+
+
+	// Only triggers without glitched seed requirement
+	private void AddRandomDoor(Room room, bool oneDoorPerRoom, bool oneDirPerRoom) // Don't ask me if this is right, idk...
+	{
+		List<Room> list = new(RoomProximityList_Ref(room, 0));
+		if (list.Count > 0)
+		{
+			var list2 = FilterDoorPotents(list, room, oneDoorPerRoom, oneDirPerRoom);
+			if (list2.Count > 0)
+			{
+				var tileController = list2[_controlledRNG.Next(list2.Count)];
+
+				room.AdjacentRooms.Add(tileController.Type);
+				tileController.AdjacentRooms.Add(room.Type);
+				List<Direction> list3 =
+				[
+					Direction.North,
+					Direction.East,
+					Direction.South,
+					Direction.West
+				];
+				for (int i = 0; i < list3.Count; i++)
+				{
+					IntVector2 intVector = list3[i].ToIntVector2();
+					IntVector2 intVector2 = new(tileController.Pos.x + intVector.x, tileController.Pos.z + intVector.z);
+					if (IsTileNotNull(intVector2))
+					{
+						var tileController2 = roomTiles[intVector2.x, intVector2.z];
+						if (tileController2 == room)
+						{
+							tileController.DoorDirs.Add(list3[i]);
+							tileController2.DoorDirs.Add(list3[i].GetOpposite());
+						}
+					}
+				}
+			}
+		}
+	}
+
+	private List<Room> FilterDoorPotents(List<Room> list, Room room, bool oneDoorPerRoom, bool oneDirPerRoom)
+	{
+		List<Room> list2 = [.. list];
+		bool flag = false;
+		bool flag2 = false;
+		for (int i = 0; i < list2.Count; i++)
+		{
+			if (room.AdjacentRooms.Contains(list2[i].Type) && oneDoorPerRoom)
+			{
+				list2.RemoveAt(i);
+				i--;
+			}
+		}
+		for (int j = 0; j < list2.Count; j++)
+		{
+			if (list2[j].Type == RoomType.Hall)
+			{
+				flag = true;
+			}
+			else if (list2[j].AdjacentRooms.Contains(RoomType.Hall))
+			{
+				flag2 = true;
+			}
+		}
+		if (oneDirPerRoom)
+		{
+			for (int k = 0; k < list2.Count; k++)
+			{
+				foreach (Direction direction in room.DoorDirs)
+				{
+					IntVector2 intVector = list2[k].Pos + direction.GetOpposite().ToIntVector2();
+					if (mapTiles.InsideBounds(intVector) && mapTiles[intVector.x, intVector.z] != RoomType.None && roomTiles[intVector.x, intVector.z] == room)
+					{
+						list2.RemoveAt(k);
+						k--;
+						break;
+					}
+				}
+			}
+		}
+		if (flag)
+		{
+			for (int l = 0; l < list2.Count; l++)
+			{
+				if (list2[l].Type != RoomType.Hall)
+				{
+					list2.RemoveAt(l);
+					l--;
+				}
+			}
+		}
+		else if (flag2)
+		{
+			for (int m = 0; m < list2.Count; m++)
+			{
+				if (!list2[m].AdjacentRooms.Contains(RoomType.Hall) && !room.AdjacentRooms.Contains(RoomType.Hall))
+				{
+					list2.RemoveAt(m);
+					m--;
+				}
+			}
+		}
+		return list2;
+	}
+
+
 
 }
