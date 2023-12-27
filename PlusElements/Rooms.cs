@@ -9,7 +9,9 @@ namespace BBP_Gen.Elements
 		public IntVector2 Size { get; set; } = new IntVector2(1, 1);
 		public IntVector2 Pos { get; set; } = default;
 		public IntVector2 MaxSize { get; set; }
-		public List<RoomType> AdjacentRooms { get; } = [];
+		public List<Room> AdjacentRooms { get; } = [];
 		public List<Direction> DoorDirs { get; } = [];
+		public bool ConnectedToHall { get => AdjacentRooms.Any(x => x.Type == RoomType.Hall); }
+		public bool ConnectedToRoom { get => AdjacentRooms.Any(x => x.Type != RoomType.Hall); }
 	}
 }

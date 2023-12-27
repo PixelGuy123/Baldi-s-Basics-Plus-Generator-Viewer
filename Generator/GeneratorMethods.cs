@@ -1,5 +1,6 @@
 ﻿using BBP_Gen.Elements;
 using BBP_Gen.Misc;
+using System.Drawing;
 using System.Numerics;
 
 namespace BBP_Gen.PlusGenerator;
@@ -135,7 +136,38 @@ public partial class Generator // Partial class, so I can organize better, these
 	}
 
 
+	private int CheckBigRoomSides(SpecialRoomCreator room)
+	{
+		List<Direction> list = [.. Directions.All()];
+		IntVector2 intVector = room.Pos;
+		IntVector2 intVector2 = room.Size;
 
+		for (int i = 0; i < list.Count; i++)
+		{
+			bool flag = false;
+			IntVector2 intVector3 = list[i].ToIntVector2();
+			for (int j = Math.Max(intVector2.x * intVector3.x + -1 * intVector3.x, 0); j < Math.Max(intVector2.x * (Math.Abs(intVector3.z) + intVector3.x), 1); j++)
+			{
+				for (int k = Math.Max(intVector2.z * intVector3.z + -1 * intVector3.z, 0); k < Math.Max(intVector2.z * (Math.Abs(intVector3.x) + intVector3.z), 1); k++)
+				{
+					IntVector2 intVector4 = new(intVector.x + j + intVector3.x, intVector.z + k + intVector3.z);
+					if (mapTiles.InsideBounds(intVector4) && mapTiles[intVector4.x, intVector4.z] == RoomType.Hall)
+					{
+						flag = true;
+						break;
+					}
+				}
+				if (flag) break;
+			}
+			if (!flag)
+			{
+				list.RemoveAt(i);
+				i--;
+			}
+		}
+
+		return list.Count;
+	}
 
 
 	private List<Direction> GetPossibleDirections(IntVector2 pos, IntVector2 size, IntVector2 maxSizes, int buffer)
@@ -382,6 +414,7 @@ public partial class Generator // Partial class, so I can organize better, these
 	{
 		mapTiles[pos.x, pos.z] = RoomType.Hall;
 		roomTiles[pos.x, pos.z] = hall;
+		hall.Spots.Add(pos);
 		halls.Add(pos);
 	}
 
@@ -529,19 +562,13 @@ public partial class Generator // Partial class, so I can organize better, these
 		mapTiles[right.x, right.z] = RoomType.Elevator;
 	}
 
-	private List<RoomType> RoomProximityList(IRoomStructure room, int buffer)
+	private RoomType[] RoomProximityList(IRoomStructure room, int buffer)
 	{
-		List<RoomType> list = [];
-		List<Direction> list2 =
-		[
-			Direction.North,
-			Direction.East,
-			Direction.South,
-			Direction.West
-		];
+		HashSet<RoomType> list = [];
+		var list2 = Directions.All();
 		IntVector2 position = room.Pos;
 		IntVector2 size = room.Size;
-		for (int i = 0; i < list2.Count; i++)
+		for (int i = 0; i < list2.Length; i++)
 		{
 			IntVector2 intVector = list2[i].ToIntVector2();
 			for (int j = Math.Max(size.x * intVector.x + -1 * intVector.x - buffer * Math.Abs(intVector.z), 0 - buffer * Math.Abs(intVector.z)); j < Math.Max(size.x * (Math.Abs(intVector.z) + intVector.x) + buffer * Math.Abs(intVector.z), 1); j++)
@@ -555,22 +582,16 @@ public partial class Generator // Partial class, so I can organize better, these
 				}
 			}
 		}
-		return list;
+		return [.. list];
 	}
 
-	private List<Room> RoomProximityList_Ref(IRoomStructure room, int buffer)
+	private IntVector2[] RoomProximityList_Ref(IRoomStructure room, int buffer)
 	{
-		List<Room> list = [];
-		List<Direction> list2 =
-		[
-			Direction.North,
-			Direction.East,
-			Direction.South,
-			Direction.West
-		];
+		List<IntVector2> list = [];
+		var list2 = Directions.All();
 		IntVector2 position = room.Pos;
 		IntVector2 size = room.Size;
-		for (int i = 0; i < list2.Count; i++)
+		for (int i = 0; i < list2.Length; i++)
 		{
 			IntVector2 intVector = list2[i].ToIntVector2();
 			for (int j = Math.Max(size.x * intVector.x + -1 * intVector.x - buffer * Math.Abs(intVector.z), 0 - buffer * Math.Abs(intVector.z)); j < Math.Max(size.x * (Math.Abs(intVector.z) + intVector.x) + buffer * Math.Abs(intVector.z), 1); j++)
@@ -578,13 +599,13 @@ public partial class Generator // Partial class, so I can organize better, these
 				for (int k = Math.Max(size.z * intVector.z + -1 * intVector.z - buffer * Math.Abs(intVector.x), 0 - buffer * Math.Abs(intVector.x)); k < Math.Max(size.z * (Math.Abs(intVector.x) + intVector.z) + buffer * Math.Abs(intVector.x), 1); k++)
 				{
 					IntVector2 intVector2 = new(position.x + j + intVector.x + buffer * intVector.x, position.z + k + intVector.z + buffer * intVector.z);
-					if (IsTileNotNull(intVector2) && roomTiles[intVector2.x, intVector2.z] != null && !list.Contains(roomTiles[intVector2.x, intVector2.z]))
-						list.Add(roomTiles[intVector2.x, intVector2.z]);
+					if (roomTiles.InsideBounds(intVector2) && roomTiles.GetItem(intVector2) != null)
+						list.Add(intVector2);
 
 				}
 			}
 		}
-		return list;
+		return [.. list];
 	}
 
 
@@ -614,34 +635,27 @@ public partial class Generator // Partial class, so I can organize better, these
 	// Only triggers without glitched seed requirement
 	private void AddRandomDoor(Room room, bool oneDoorPerRoom, bool oneDirPerRoom) // Don't ask me if this is right, idk...
 	{
-		List<Room> list = new(RoomProximityList_Ref(room, 0));
+		List<IntVector2> list = new(RoomProximityList_Ref(room, 0));
 		if (list.Count > 0)
 		{
-			var list2 = FilterDoorPotents(list, room, oneDoorPerRoom, oneDirPerRoom);
-			if (list2.Count > 0)
+            List<IntVector2> list2 = FilterDoorPotents([.. list], room, oneDoorPerRoom, oneDirPerRoom);
+            if (list2.Count > 0)
 			{
-				var tileController = list2[_controlledRNG.Next(list2.Count)];
+                IntVector2 tileController = list2[_controlledRNG.Next(list2.Count)];
+				var tileRoom = roomTiles.GetItem(tileController);
 
-				room.AdjacentRooms.Add(tileController.Type);
-				tileController.AdjacentRooms.Add(room.Type);
-				List<Direction> list3 =
-				[
-					Direction.North,
-					Direction.East,
-					Direction.South,
-					Direction.West
-				];
-				for (int i = 0; i < list3.Count; i++)
+				room.AdjacentRooms.Add(tileRoom);
+				tileRoom.AdjacentRooms.Add(room);
+				foreach (var dir in Directions.All())
 				{
-					IntVector2 intVector = list3[i].ToIntVector2();
-					IntVector2 intVector2 = new(tileController.Pos.x + intVector.x, tileController.Pos.z + intVector.z);
-					if (IsTileNotNull(intVector2))
+					IntVector2 intVector2 = tileController + dir.ToIntVector2();
+                   if (roomTiles.InsideBounds(intVector2) && roomTiles.GetItem(intVector2) != null)
 					{
-						var tileController2 = roomTiles[intVector2.x, intVector2.z];
+                        Room tileController2 = roomTiles[intVector2.x, intVector2.z];
 						if (tileController2 == room)
 						{
-							tileController.DoorDirs.Add(list3[i]);
-							tileController2.DoorDirs.Add(list3[i].GetOpposite());
+                            tileRoom.DoorDirs.Add(dir);
+							tileController2.DoorDirs.Add(dir.GetOpposite());
 						}
 					}
 				}
@@ -649,14 +663,15 @@ public partial class Generator // Partial class, so I can organize better, these
 		}
 	}
 
-	private List<Room> FilterDoorPotents(List<Room> list, Room room, bool oneDoorPerRoom, bool oneDirPerRoom)
+	private List<IntVector2> FilterDoorPotents(IntVector2[] list, Room room, bool oneDoorPerRoom, bool oneDirPerRoom)
 	{
-		List<Room> list2 = [.. list];
+		List<IntVector2> list2 = [.. list];
 		bool flag = false;
 		bool flag2 = false;
 		for (int i = 0; i < list2.Count; i++)
 		{
-			if (room.AdjacentRooms.Contains(list2[i].Type) && oneDoorPerRoom)
+			var selRoom = roomTiles.GetItem(list2[i]);
+			if ((oneDoorPerRoom && room.AdjacentRooms.Contains(selRoom)) || selRoom.Type == RoomType.Elevator || selRoom.Type == RoomType.FieldTripRoom)
 			{
 				list2.RemoveAt(i);
 				i--;
@@ -664,11 +679,11 @@ public partial class Generator // Partial class, so I can organize better, these
 		}
 		for (int j = 0; j < list2.Count; j++)
 		{
-			if (list2[j].Type == RoomType.Hall)
+			if (roomTiles.GetItem(list2[j]).Type == RoomType.Hall)
 			{
 				flag = true;
 			}
-			else if (list2[j].AdjacentRooms.Contains(RoomType.Hall))
+			else if (roomTiles.GetItem(list2[j]).ConnectedToHall)
 			{
 				flag2 = true;
 			}
@@ -679,8 +694,8 @@ public partial class Generator // Partial class, so I can organize better, these
 			{
 				foreach (Direction direction in room.DoorDirs)
 				{
-					IntVector2 intVector = list2[k].Pos + direction.GetOpposite().ToIntVector2();
-					if (mapTiles.InsideBounds(intVector) && mapTiles[intVector.x, intVector.z] != RoomType.None && roomTiles[intVector.x, intVector.z] == room)
+					IntVector2 intVector = list2[k] + direction.GetOpposite().ToIntVector2();
+                    if (IsTileNotNull(intVector) && roomTiles[intVector.x, intVector.z] == room)
 					{
 						list2.RemoveAt(k);
 						k--;
@@ -693,7 +708,7 @@ public partial class Generator // Partial class, so I can organize better, these
 		{
 			for (int l = 0; l < list2.Count; l++)
 			{
-				if (list2[l].Type != RoomType.Hall)
+				if (roomTiles.GetItem(list2[l]).Type != RoomType.Hall)
 				{
 					list2.RemoveAt(l);
 					l--;
@@ -704,7 +719,7 @@ public partial class Generator // Partial class, so I can organize better, these
 		{
 			for (int m = 0; m < list2.Count; m++)
 			{
-				if (!list2[m].AdjacentRooms.Contains(RoomType.Hall) && !room.AdjacentRooms.Contains(RoomType.Hall))
+				if (!roomTiles.GetItem(list2[m]).ConnectedToHall && !room.ConnectedToHall)
 				{
 					list2.RemoveAt(m);
 					m--;

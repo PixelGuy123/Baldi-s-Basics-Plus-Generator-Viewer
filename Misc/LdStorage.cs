@@ -20,7 +20,7 @@ internal static class LdStorage // Stores Level Objects
 		25f,
 		4f,
 		[new WeightedSelection<RandomEvent>(new GenericEvent("Fog Event"), 100), new WeightedSelection<RandomEvent>(new PartyEvent(), 50)],
-		[new(new(new(new(10, 10), new(15, 15)), "Cafeteria", acceptExits: true), 100), new(new(new(new(12, 12), new(18, 18)), "Playground"), 100)], // Lots of news lmfao
+		[new(new(new(new(10, 10), new(15, 15)), "Cafeteria", acceptExits: true), 100), new(new(new(new(12, 12), new(18, 18)), "Playground"), 50)], // Lots of news lmfao
 		4,
 		6,
 		5,

@@ -8,19 +8,14 @@ public partial class Generator // Makes it easier to make an instance of it. Mai
     public Generator(int seed, int seedOffset, LevelObject levelObj) =>
         (_seed, _seedOffset, ld) = (seed, seedOffset, levelObj);
 
-	public (bool, List<string>) BeginGeneration(bool onlyGlitchedMode = false)
+	public SeedToken BeginGeneration(bool onlyGlitchedMode = false)
     {
-		List<string> data = [];
-
-		data.Add("Level initialized with seed: " + Seed);
+		
         
 
         _controlledRNG = new(Seed); // for npc stuff
 
 		// --NPC STUFF (later)--
-
-		data.Add("------- All NPCs on map -------");
-		data.Add("Baldi");
 
 		List<LevelObject> list = [.. ld.PreviousLevels, ld];
 		List<string> npcs = [];
@@ -62,8 +57,6 @@ public partial class Generator // Makes it easier to make an instance of it. Mai
 			}
 		}
 
-		data.AddRange(npcs);
-
 		// --End of npc stuff--
 
 
@@ -74,8 +67,6 @@ public partial class Generator // Makes it easier to make an instance of it. Mai
 
         if (_controlledRNG.Next(0, 2) == 1) (levelSize.z, levelSize.x) = (levelSize.x, levelSize.z); // Change Values
 
-		data.Add("------ Extra Info ------");
-		data.Add($"Level Size: {levelSize.x},{levelSize.z}");
 
         mapTiles = new RoomType[levelSize.x, levelSize.z];
 		buffer = new bool[levelSize.x, levelSize.z];
@@ -109,7 +100,6 @@ public partial class Generator // Makes it easier to make an instance of it. Mai
 
             e.Initialize(_controlledRNG);
             _controlledRNG.NextDouble();
-			data.Add($"Event Available: {e.Name}");
         }
 
 
@@ -169,14 +159,16 @@ public partial class Generator // Makes it easier to make an instance of it. Mai
             specialRoom.SetRandomValues(_controlledRNG);
             specialRoom.SetReferences(this);
             specialRoom.Initialize();
-               data.Add($"Special Room Data: {specialRoom.Name} with size: {specialRoom.MaxSize} on Pos: {specialRoom.Pos}");
+			
 
 
             specialRoomsToExpand.Add(specialRoom);
         }
 
 		ExpansionIterator(0, out var specialRooms,[.. specialRoomsToExpand]);
-		specialRoomsToExpand = new List<SpecialRoomCreator>(specialRooms.Cast<SpecialRoomCreator>());
+		specialRoomsToExpand = specialRooms;
+
+		UpdateTileReferences([.. specialRoomsToExpand.ConvertAll(x => x.AsRoom())]); // Update the tiles here because I forgor
 
 		// --------- Plot Spawning Process ---------
 
@@ -523,6 +515,8 @@ public partial class Generator // Makes it easier to make an instance of it. Mai
 			}
 		}
 
+		var oobspcs = specialRoomsToExpand.Where(s => CheckBigRoomSides(s) == 0); // OOB Check here
+		var onedoorspcs = specialRoomsToExpand.Where(s => CheckBigRoomSides(s) == 1); // 1 door to bigroom Check here
 
 		// -------------- Elevator Generation --------------
 
@@ -651,8 +645,6 @@ public partial class Generator // Makes it easier to make an instance of it. Mai
 			}
 		}
 
-		data.Add($"Elevators: {exitCount}/{ld.ExitCount}");
-
 		// Field Trip Spawn Here
 
 
@@ -714,33 +706,29 @@ public partial class Generator // Makes it easier to make an instance of it. Mai
 
 		// Door operation here, I'll just make it save the adjacent rooms, that's necessary
 
-			foreach(var room in rooms)
-			{
-				foreach (var spot in room.Spots)
-				{
-					roomTiles[spot.x, spot.z] = room;
-				}
-			}
+		UpdateTileReferences([.. rooms]);
 
 		foreach (var room in rooms)
 		{
 
-				AddRandomDoor(room, true, false);
-				if ((float)_controlledRNG.NextDouble() * 100f < ld.PassThroughChance) // Check if there's any other adjacent room, very simplified
-				{
-					bool flag = RoomProximityList(room, 0).Any(x => x != RoomType.Hall);
-					AddRandomDoor(room, !flag, flag);
-				}
-			
-		}
+			AddRandomDoor(room, true, false);
+            if ((float)_controlledRNG.NextDouble() * 100f < ld.PassThroughChance) // Check if there's any other adjacent room
+			{                
+                bool flag = !RoomProximityList(room, 0).Any(x => x != RoomType.Hall);
+				AddRandomDoor(room, !flag, flag);
+			}
+
+        }
 
 
 		List<WeightedSelection<Room>> potentialClassRooms = [];
 		foreach (var room in rooms)
 		{
-			if (room.AdjacentRooms.Contains(RoomType.Hall) && room.Type == RoomType.Room)
+			if (room.AdjacentRooms.Contains(hall) && room.Type == RoomType.Room)
 				potentialClassRooms.Add(new WeightedSelection<Room>(room, 1));
-		}
+
+           
+        }
 
 		foreach (var ev in eventsToLaunch)
 		{
@@ -787,12 +775,21 @@ public partial class Generator // Makes it easier to make an instance of it. Mai
 			_controlledRNG.Next(); // another builder selection
 		}
 
-		UpdateTiles([.. classRooms]);
+        UpdateTiles([.. classRooms]);
 
-		bool glitched = classRooms.Count < ogclassRoomCount;
+		SeedType type = SeedType.Normal;
 
-		if (onlyGlitchedMode && !glitched)
-			return (false, []);
+		if (classRooms.Count < ogclassRoomCount)
+			type |= SeedType.Glitched;
+		
+		
+		if (oobspcs.Any()) // Any special room with no space available
+			type |= SeedType.OOB;
+		if (onedoorspcs.Any())
+			type |= SeedType.Uncommon;
+
+        if (onlyGlitchedMode)
+			return new SeedToken(type, classRooms.Count, !hasMystery, [.. onedoorspcs.Select(s => "1 door at " + s.Name), .. oobspcs.Select(s => "OOB " + s.Name)]);
 
 		List<Room> facultyRooms = [];
 
@@ -813,13 +810,24 @@ public partial class Generator // Makes it easier to make an instance of it. Mai
 
 			_controlledRNG.Next(); // Builder selection
 		}
-		data.Add("-------- Room Gen Data --------");
-		data.Add($"Notebooks: 0/{classRooms.Count} {(glitched && !hasMystery ? "(APR)" : string.Empty)}{(glitched ? " -- IT IS A GLITCHED SEED!!" : string.Empty)}");
-		data.Add($"Faculties: {facultyRoomCount}");
 
 		// Done
+		List<string> data = []; // Can't be really simplified because of the collections
+		data.Add("Level initialized with seed: " + Seed);
+		data.Add("------- All NPCs on map -------");
+		data.Add("Baldi");
+		data.AddRange(npcs);
+		data.Add("------ Extra Info ------");
+		data.Add($"Level Size: {levelSize.x},{levelSize.z}");
+		eventsToLaunch.ForEach(e => data.Add($"Event Available: {e.Name}"));
+		specialRoomsToExpand.ForEach(specialRoom => data.Add($"Special Room Data: {specialRoom.Name} with size: {specialRoom.MaxSize} on Pos: {specialRoom.Pos}"));
+		data.Add($"Elevators: {exitCount}/{ld.ExitCount}");
+		data.Add("-------- Room Gen Data --------");
+		data.Add($"Notebooks: 0/{classRooms.Count} {(type.HasFlag(SeedType.Glitched) && !hasMystery ? "(APR)" : string.Empty)}{(type.HasFlag(SeedType.Glitched) ? " -- IT IS A GLITCHED SEED!!" : string.Empty)}");
+		data.Add($"Faculties: {facultyRoomCount}");
+		data.Add("Seed Tags: " + type.ToString());
 
-		return (glitched, data);
+        return new SeedToken(type, classRooms.Count, !hasMystery, [.. data]); // SeedType.Normal is a temporary attribute, I'll change it to be dynamic
     }
 
 
@@ -920,20 +928,34 @@ public partial class Generator // Makes it easier to make an instance of it. Mai
 		{
 			foreach (var spot in room.Spots)
 			{
-				mapTiles[spot.x, spot.z] = room.Type;
+				if (mapTiles.InsideBounds(spot))
+					mapTiles[spot.x, spot.z] = room.Type;
 			}
 		}
 	}
 
-	private void ExpansionIterator(int buffer, out List<IRoomStructure> structuresBack,params IRoomStructure[] rooms)
+	public void UpdateTileReferences(params Room[] rooms)
 	{
-		var rest = new List<IRoomStructure>();
+		foreach (var room in rooms)
+		{
+			for (int i = 0; i < room.Spots.Count; i++)
+			{
+				if (roomTiles.InsideBounds(room.Spots[i]))
+					roomTiles[room.Spots[i].x, room.Spots[i].z] = room;
+				
+			}
+		}
+	}
+
+	private void ExpansionIterator<R>(int buffer, out List<R> structuresBack,params R[] rooms) where R : IRoomStructure
+	{
+		var rest = new List<R>();
 		structuresBack = rest;
 
 		if (rooms.Length == 0) return;
 
 		
-		List<IRoomStructure> plotsToExpand = new(rooms);
+		List<R> plotsToExpand = new(rooms);
 		while (plotsToExpand.Count > 0)
 		{
 			for (int i = 0; i < plotsToExpand.Count; i++)
@@ -957,13 +979,13 @@ public partial class Generator // Makes it easier to make an instance of it. Mai
 		}
 	}
 
-	private void ExpansionIterator(int buffer, params IRoomStructure[] rooms)
+	private void ExpansionIterator<R>(int buffer, params R[] rooms) where R : IRoomStructure
 	{
 
 		if (rooms.Length == 0) return;
 
 
-		List<IRoomStructure> plotsToExpand = new(rooms);
+		List<R> plotsToExpand = new(rooms);
 		while (plotsToExpand.Count > 0)
 		{
 			for (int i = 0; i < plotsToExpand.Count; i++)

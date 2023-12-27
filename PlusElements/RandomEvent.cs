@@ -41,7 +41,7 @@ public class MysteryRoomEvent() : RandomEvent("Mystery Room")
 			int num = crng.Next(0, list.Count);
 			room = list[num].selection;
 			list.RemoveAt(num);
-			if (room.AdjacentRooms.Any(x => x != RoomType.Hall))
+			if (room.AdjacentRooms.Any(x => x.Type != RoomType.Hall))
 				room = null;
 			
 		}

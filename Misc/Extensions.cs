@@ -1,7 +1,7 @@
 ﻿using BBP_Gen.Elements;
 namespace BBP_Gen.Misc;
 
-public static class ArrayExtensions
+public static class Extensions
 {
     public static void Do<T>(this IEnumerable<T> array, Action<T> act)
     {
@@ -33,5 +33,16 @@ public static class ArrayExtensions
 	public static bool InsideBounds<T>(this T[,] array, int x, int y) => x >= 0 && x < array.GetLength(0) && y >= 0 && y < array.GetLength(1);
 
     public static bool InsideBounds<T>(this T[,] array, IntVector2 pos) => array.InsideBounds(pos.x, pos.z);
+	public static T GetItem<T>(this T[,] array, IntVector2 pos) => array[pos.x, pos.z];
+	public static T GetItem<T>(this T[,] array, int x, int y) => array[x, y];
+
+	public static Room AsRoom(this SpecialRoomCreator creator) => new()
+	{
+		Size = creator.Size,
+		Pos = creator.Pos,
+		MaxSize = creator.MaxSize,
+		Spots = creator.Spots,
+		Type = PlusGenerator.RoomType.Room
+	};
 
 }
