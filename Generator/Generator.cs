@@ -518,6 +518,8 @@ public partial class Generator // Makes it easier to make an instance of it. Mai
 		var oobspcs = specialRoomsToExpand.Where(s => CheckBigRoomSides(s) == 0); // OOB Check here
 		var onedoorspcs = specialRoomsToExpand.Where(s => CheckBigRoomSides(s) == 1); // 1 door to bigroom Check here
 
+		uncommonTags[1] = onedoorspcs.Any();
+
 		// -------------- Elevator Generation --------------
 
 		bool[,] acceptExit = new bool[levelSize.x, levelSize.z];
@@ -529,8 +531,9 @@ public partial class Generator // Makes it easier to make an instance of it. Mai
 			if (specialRoom.AcceptExits)
 			{
 				label++;
-				foreach (var pos in specialRoom.Spots)
+				for (int i = 0; i < specialRoom.Spots.Count; i++)
 				{
+					var pos = specialRoom.Spots[i];
 					if (acceptExit.InsideBounds(pos)) // For some reason this can happen and I haven't figured out because the seed wasn't logged ;-;
 					{
 						acceptExit[pos.x, pos.z] = true;
@@ -541,8 +544,7 @@ public partial class Generator // Makes it easier to make an instance of it. Mai
 			}
 		}
 
-		foreach (var hall in halls) // Halls obviously accept exists and have the label in 1 by default
-			acceptExit[hall.x, hall.z] = true;
+		halls.ForEach(hall => acceptExit[hall.x, hall.z] = true); // Halls obviously accept exists and have the label in 1 by default
 		
 
 		List<Direction> potentailExitDirections = [.. Directions.All()];
@@ -591,7 +593,7 @@ public partial class Generator // Makes it easier to make an instance of it. Mai
 								}
 								if (flag3)
 								{
-                                    if (ElevatorSpotFits(intVector10 + (direction3.ToIntVector2() * 2), direction3.GetOpposite(), mapTiles[tileController11.x, tileController11.z]))
+                                    if (ElevatorSpotFits(intVector10 + (direction3.ToIntVector2() * 2), direction3.GetOpposite(), mapTiles[tileController11.x, tileController11.z] | RoomType.Elevator))
 									{
 										list10.Add(intVector10 + direction3.ToIntVector2());
 									}
@@ -777,19 +779,27 @@ public partial class Generator // Makes it easier to make an instance of it. Mai
 
         UpdateTiles([.. classRooms]);
 
-		SeedType type = SeedType.Normal;
-
 		if (classRooms.Count < ogclassRoomCount)
 			type |= SeedType.Glitched;
 		
 		
 		if (oobspcs.Any()) // Any special room with no space available
 			type |= SeedType.OOB;
-		if (onedoorspcs.Any())
+		if (uncommonTags.Any(x => x)) // If any boolean is true
 			type |= SeedType.Uncommon;
 
-        if (onlyGlitchedMode)
-			return new SeedToken(type, classRooms.Count, !hasMystery, [.. onedoorspcs.Select(s => "1 door at " + s.Name), .. oobspcs.Select(s => "OOB " + s.Name)]);
+		List<string> data2 = [];
+		if (uncommonTags[1])
+			data2.AddRange(onedoorspcs.Select(s => "1 door at " + s.Name));
+		if (oobspcs.Any())
+			data2.AddRange(oobspcs.Select(s => "OOB " + s.Name));
+		if (uncommonTags[0])
+			data2.Add("1-way wall");
+		if (uncommonTags[2])
+			data2.Add("Missing Field Trip"); // Yes, bunch of adds here
+
+		if (onlyGlitchedMode)
+			return new SeedToken(type, classRooms.Count, !hasMystery, [.. data2]);
 
 		List<Room> facultyRooms = [];
 
@@ -823,7 +833,7 @@ public partial class Generator // Makes it easier to make an instance of it. Mai
 		specialRoomsToExpand.ForEach(specialRoom => data.Add($"Special Room Data: {specialRoom.Name} with size: {specialRoom.MaxSize} on Pos: {specialRoom.Pos}"));
 		data.Add($"Elevators: {exitCount}/{ld.ExitCount}");
 		data.Add("-------- Room Gen Data --------");
-		data.Add($"Notebooks: 0/{classRooms.Count} {(type.HasFlag(SeedType.Glitched) && !hasMystery ? "(APR)" : string.Empty)}{(type.HasFlag(SeedType.Glitched) ? " -- IT IS A GLITCHED SEED!!" : string.Empty)}");
+		data.Add($"Notebooks: 0/{classRooms.Count} {(type.HasFlag(SeedType.Glitched) && !hasMystery ? "(APR) " : string.Empty)}{(type.HasFlag(SeedType.Glitched) ? "-- IT IS A GLITCHED SEED!!" : string.Empty)}");
 		data.Add($"Faculties: {facultyRoomCount}");
 		data.Add("Seed Tags: " + type.ToString());
 
@@ -926,8 +936,9 @@ public partial class Generator // Makes it easier to make an instance of it. Mai
 	{
 		foreach (var room in rooms)
 		{
-			foreach (var spot in room.Spots)
+			for (int i = 0; i < room.Spots.Count; i++)
 			{
+				var spot = room.Spots[i];
 				if (mapTiles.InsideBounds(spot))
 					mapTiles[spot.x, spot.z] = room.Type;
 			}
@@ -1036,10 +1047,14 @@ public partial class Generator // Makes it easier to make an instance of it. Mai
 
 	IntVector2 spawnSpot = default;
 
+	readonly bool[] uncommonTags = new bool[3]; // in order: 1-way wall, 1 door to bigroom, field trip
+
 	readonly Room hall = new()
 	{
 		Type = RoomType.Hall
 	};
+
+	SeedType type = SeedType.Normal;
 
     public LevelObject LevelObject { get => ld; }
 

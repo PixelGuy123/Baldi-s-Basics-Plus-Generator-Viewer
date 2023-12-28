@@ -89,13 +89,13 @@ public class MainConsole // Program
 		while (true)
 		{
 			Console.Clear();
-            Console.WriteLine("Please, type the Floor you wanna begin on (0 - END (not available), 1 - F1, 2 - F2 (not available), 3 - F3)");
+            Console.WriteLine("Please, type the Floor you wanna begin on (0 - END, 1 - F1, 2 - F2 (not available), 3 - F3)");
 
 			(LevelObject, int) obj;
 
 			if (int.TryParse(Console.ReadLine(), out int s) && s >= 0 && s <= 3)
 			{
-				obj = s == 1 ? LdStorage.Floor1 : LdStorage.Floor3;
+				obj = s == 0 ? LdStorage.END : s == 1 ? LdStorage.Floor1 : LdStorage.Floor3;
 			}
 			else
 			{
@@ -169,7 +169,7 @@ public class MainConsole // Program
 		while (true)
 		{
 			Console.Clear();
-			Console.WriteLine("Please, type the Floor you wanna begin on (0 - END (not available), 1 - F1, 2 - F2 (not available), 3 - F3) // Type \'l\' to leave");
+			Console.WriteLine("Please, type the Floor you wanna begin on (0 - END, 1 - F1, 2 - F2 (not available), 3 - F3) // Type \'l\' to leave");
             Console.WriteLine("Upon running this tool, you'll only be able to close it from the window or if you manage to reach the maximum integer value");
             Console.WriteLine($"Don\'t worry, all seed types are stored on dumps localized on: {Path.Combine(defaultDumpDirectoryName, dirName)}");
             Console.WriteLine("When a seed is found, it\'ll dump the seed into th designed file (the folder will begin empty, but will gradually fill with the files)");
@@ -181,7 +181,7 @@ public class MainConsole // Program
 
 			if (int.TryParse(str, out int s) && s >= 0 && s <= 3)
 			{
-				obj = s == 1 ? LdStorage.Floor1 : LdStorage.Floor3;
+				obj = s == 0 ? LdStorage.END : s == 1 ? LdStorage.Floor1 : LdStorage.Floor3;
 				floor = s == 0 ? "END" : $"F{s}";
 			}
 			else if (str?.ToLower() == "l")
@@ -260,6 +260,7 @@ public class MainConsole // Program
 						Path.Combine(defaultDumpDirectoryName, dirName, crashSeedFileName),
 						Path.Combine(defaultDumpDirectoryName, dirName, uncommonSeedFileName)
 					];
+				uint numToLog = seedLogOffset;
 
 				for (;s < int.MaxValue; s+= settInstance.AmountOfThreads)
 				{
@@ -273,7 +274,7 @@ public class MainConsole // Program
 
 
 							if (token.Type.HasFlag(SeedType.Glitched))
-								Log(paths[0], $"{x}\t{floor}\t::::\t0/{token.AmountOfNotebooks}\t{time.Month}/{time.Day}/{time.Year}"); // :::: is for name btw...
+								Log(paths[0], $"{x}\t{floor}\t::::\t0/{token.AmountOfNotebooks}\t{time.Month}/{time.Day}/{time.Year}{(token.IsAPR ? "\t(APR)" : string.Empty)}"); // :::: is for name btw...
 							
 							
 							
@@ -283,6 +284,7 @@ public class MainConsole // Program
 							{
 								for (int i = 0; i < token.Data.Length; i++)
 									sb.Append($"{token.Data[i]}{(i < token.Data.Length - 1 ? '/' : string.Empty)}");
+								
 							}
 
 							if (token.Type.HasFlag(SeedType.OOB))
@@ -300,12 +302,16 @@ public class MainConsole // Program
 						{
 							Console.WriteLine();
 							Console.WriteLine($"Undentified error found on seed: {x}");
-							Console.WriteLine(e.Message);
+							Console.WriteLine(e);
                         }
+						
 					});
-
-					if (s % seedLogOffset == 0)
+					numToLog += (uint)settInstance.AmountOfThreads;
+					if (numToLog >= seedLogOffset)
+					{
 						Console.Write("\rCurrent seed: {0} (Updates each {1} seeds)", s, seedLogOffset);
+						numToLog = 0u;
+					}
 				}
 
 				Console.WriteLine();

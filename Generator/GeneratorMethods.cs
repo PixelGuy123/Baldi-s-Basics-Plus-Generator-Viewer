@@ -546,7 +546,7 @@ public partial class Generator // Partial class, so I can organize better, these
 
 	private bool IsTileNull(IntVector2 pos) => mapTiles.InsideBounds(pos) && mapTiles[pos.x, pos.z] == RoomType.None;
 
-	private bool IsTileEqual(IntVector2 pos, RoomType match) => IsTileNotNull(pos) && mapTiles[pos.x, pos.z] == match;
+	private bool IsTileEqual(IntVector2 pos, RoomType match) => IsTileNotNull(pos) && match.HasFlag(mapTiles[pos.x, pos.z]);
 
 	private void CreateElevator(IntVector2 pos, Direction dir, bool isSpawn)
 	{
@@ -557,8 +557,15 @@ public partial class Generator // Partial class, so I can organize better, these
 		pos += dir.ToIntVector2();
 		mapTiles[pos.x, pos.z] = RoomType.Elevator;
 		var left = pos + dir.PerpendicularList()[0].ToIntVector2();
+		if (IsTileEqual(left + dir.ToIntVector2(), RoomType.Elevator))
+			uncommonTags[0] = true;
+
 		mapTiles[left.x, left.z] = RoomType.Elevator;
+
 		var right = pos + dir.PerpendicularList()[1].ToIntVector2();
+		if (IsTileEqual(right + dir.ToIntVector2(), RoomType.Elevator))
+			uncommonTags[0] = true;
+
 		mapTiles[right.x, right.z] = RoomType.Elevator;
 	}
 
@@ -646,19 +653,19 @@ public partial class Generator // Partial class, so I can organize better, these
 
 				room.AdjacentRooms.Add(tileRoom);
 				tileRoom.AdjacentRooms.Add(room);
-				foreach (var dir in Directions.All())
+				Directions.All().Do((dir) =>
 				{
 					IntVector2 intVector2 = tileController + dir.ToIntVector2();
-                   if (roomTiles.InsideBounds(intVector2) && roomTiles.GetItem(intVector2) != null)
+					if (roomTiles.InsideBounds(intVector2) && roomTiles.GetItem(intVector2) != null)
 					{
-                        Room tileController2 = roomTiles[intVector2.x, intVector2.z];
+						Room tileController2 = roomTiles[intVector2.x, intVector2.z];
 						if (tileController2 == room)
 						{
-                            tileRoom.DoorDirs.Add(dir);
+							tileRoom.DoorDirs.Add(dir);
 							tileController2.DoorDirs.Add(dir.GetOpposite());
 						}
 					}
-				}
+				});
 			}
 		}
 	}
@@ -692,9 +699,10 @@ public partial class Generator // Partial class, so I can organize better, these
 		{
 			for (int k = 0; k < list2.Count; k++)
 			{
-				foreach (Direction direction in room.DoorDirs)
+				for (int i = 0; i < room.DoorDirs.Count; i++)
 				{
-					IntVector2 intVector = list2[k] + direction.GetOpposite().ToIntVector2();
+
+					IntVector2 intVector = list2[k] + room.DoorDirs[i].GetOpposite().ToIntVector2();
                     if (IsTileNotNull(intVector) && roomTiles[intVector.x, intVector.z] == room)
 					{
 						list2.RemoveAt(k);
