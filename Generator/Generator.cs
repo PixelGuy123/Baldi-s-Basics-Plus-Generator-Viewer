@@ -1,5 +1,6 @@
 ﻿using BBP_Gen.Elements;
 using BBP_Gen.Misc;
+using System.Collections;
 
 namespace BBP_Gen.PlusGenerator;
 
@@ -17,7 +18,7 @@ public partial class Generator // Makes it easier to make an instance of it. Mai
 
 		// --NPC STUFF (later)--
 
-		List<LevelObject> list = [.. ld.PreviousLevels, ld];
+		LevelObject[] list = [.. ld.PreviousLevels, ld];
 		List<string> npcs = [];
 
 		int k; // Just initialize a k for every iterator
@@ -43,7 +44,7 @@ public partial class Generator // Makes it easier to make an instance of it. Mai
 			int num = 0;
 			while (num < levelObject.AdditionalNPCs && list2.Count > 0)
 			{
-				string npc3 = WeightedSelection<string>.ControlledRandomSelection(_controlledRNG, [.. list2]);
+				string npc3 = WeightedSelection<string>.ControlledRandomSelection_List(_controlledRNG, list2);
 				npcs.Add(npc3);
 				for (int l = 0; l < list2.Count; l++)
 				{
@@ -88,7 +89,7 @@ public partial class Generator // Makes it easier to make an instance of it. Mai
         int h = 0;
         while (h++ < eventCount && events.Count > 0)
         {
-            var rEvent = WeightedSelection<RandomEvent>.ControlledRandomSelection(_controlledRNG, [.. events]);
+            var rEvent = WeightedSelection<RandomEvent>.ControlledRandomSelection_List(_controlledRNG, events);
             eventsToLaunch.Add(rEvent);
             events.RemoveAll(x => x.selection == rEvent);
         }
@@ -105,15 +106,20 @@ public partial class Generator // Makes it easier to make an instance of it. Mai
 
         // --Event Stuff Gone--
 
-        Internal_SkipRNGVals(22); // Skip all that material choose thing
+		// --Field Trip first operation--
+		Direction fieldTripDir = Direction.North;
+		
+		if (ld.FieldTrip)
+		{
+			fieldTripDir = Directions.ControlledRandomDirection(_controlledRNG);
+			Internal_SkipRNGVals(3); // Skip the item selection
+		}
 
-        // --Field Trip first operation--
+		// --Field trip done--
 
+		Internal_SkipRNGVals(22); // Skip all that material choose thing
 
-
-        // --Field trip done--
-
-        int specialRoomCount = _controlledRNG.Next(ld.SpecialRoomCount.Min, ld.SpecialRoomCount.Max + 1);
+		int specialRoomCount = _controlledRNG.Next(ld.SpecialRoomCount.Min, ld.SpecialRoomCount.Max + 1);
 
         // Here comes buffer stuff
 
@@ -127,7 +133,39 @@ public partial class Generator // Makes it easier to make an instance of it. Mai
 
 		// --Another field trip operation over buffer tiles--
 
+		int num3 = 5;
 
+		if (ld.FieldTrip)
+		{
+			switch (fieldTripDir)
+			{
+				case Direction.North:
+					if (northEdgeBuffer < num3)
+					{
+						northEdgeBuffer = num3;
+					}
+					break;
+				case Direction.East:
+					if (eastEdgeBuffer < num3)
+					{
+						eastEdgeBuffer = num3;
+					}
+					break;
+				case Direction.South:
+					if (southEdgeBuffer < num3)
+					{
+						southEdgeBuffer = num3;
+					}
+					break;
+				case Direction.West:
+					if (westEdgeBuffer < num3)
+					{
+						westEdgeBuffer = num3;
+					}
+					break;
+			}
+			_controlledRNG.Next(); // Skip field trip type selection
+		}
 
 		// --done--
 
@@ -165,10 +203,10 @@ public partial class Generator // Makes it easier to make an instance of it. Mai
             specialRoomsToExpand.Add(specialRoom);
         }
 
-		ExpansionIterator(0, out var specialRooms,[.. specialRoomsToExpand]);
+		ExpansionIterator_List(0, out var specialRooms, specialRoomsToExpand);
 		specialRoomsToExpand = specialRooms;
 
-		UpdateTileReferences([.. specialRoomsToExpand.ConvertAll(x => x.AsRoom())]); // Update the tiles here because I forgor
+		UpdateTileReferences(specialRoomsToExpand.ConvertAll(x => x.AsRoom())); // Update the tiles here because I forgor
 
 		// --------- Plot Spawning Process ---------
 
@@ -190,7 +228,7 @@ public partial class Generator // Makes it easier to make an instance of it. Mai
 
 		}
 
-		ExpansionIterator(1, [.. plots]);
+		ExpansionIterator_List(1, plots);
 
 		for (int i = 0; i < plots.Count; i++) // Removing small plots
 		{
@@ -251,19 +289,16 @@ public partial class Generator // Makes it easier to make an instance of it. Mai
 
 		// Done
 
-		for (int i = 0; i < plots.Count; i++) // Removing all plots
+		for (int i = 0; i < plots.Count;) // Removing all plots
 		{
 				plots[i].Spots.ForEach(x => mapTiles[x.x, x.z] = RoomType.None);
 				plots.RemoveAt(i);
-				i--;
-			
 		}
 
-		for (int i = 0; i < outerBuffers.Count; i++) // How could I forget these buffer tiles, crap!!!
+		for (int i = 0; i < outerBuffers.Count;) // How could I forget these buffer tiles, crap!!!
 		{
 			mapTiles[outerBuffers[i].x, outerBuffers[i].z] = RoomType.None;
 			outerBuffers.RemoveAt(i);
-			i--;
 		}
 
 		// Hall Disconnect Connection
@@ -391,19 +426,21 @@ public partial class Generator // Makes it easier to make an instance of it. Mai
 
 
 		// ---------- Halls to Add Code -----------
+
+		// Note - Reusing outerBuffers to prevBuffers
 		
 		List<IntVector2> potentialStartingPoints = [];
 
-		List<IntVector2> prevBuffers = [];
+		//List<IntVector2> prevBuffers = [];
 		
 		for (k = 0; k < hallsToAdd; k++)
 		{
-            for (int i = 0; i < prevBuffers.Count;) // No increment needed if it's gonna clear the list up
+            for (int i = 0; i < outerBuffers.Count;) // No increment needed if it's gonna clear the list up
 			{
-				var vec = prevBuffers[i];
+				var vec = outerBuffers[i];
 				mapTiles[vec.x, vec.z] = RoomType.None;
 				buffer[vec.x, vec.z] = false;
-				prevBuffers.RemoveAt(i);
+				outerBuffers.RemoveAt(i);
 			}
             for (int x6 = 0; x6 < levelSize.x; x6++)
 			{
@@ -416,7 +453,7 @@ public partial class Generator // Makes it easier to make an instance of it. Mai
 						{
                             mapTiles[x6, num16] = RoomType.Buffer;
 							buffer[x6, num16] = true;
-							prevBuffers.Add(intVector3);
+							outerBuffers.Add(intVector3);
                         }
 						
 					}
@@ -456,31 +493,33 @@ public partial class Generator // Makes it easier to make an instance of it. Mai
 			
 		}
 
-		for (int i = 0; i < prevBuffers.Count;) // No increment needed if it's gonna clear the list up
+		for (int i = 0; i < outerBuffers.Count;) // No increment needed if it's gonna clear the list up
 		{
-			var vec = prevBuffers[i]; // Removing buffer again, just here now
+			var vec = outerBuffers[i]; // Removing buffer again, just here now
 			mapTiles[vec.x, vec.z] = RoomType.None;
 			buffer[vec.x, vec.z] = false;
-			prevBuffers.RemoveAt(i);
+			outerBuffers.RemoveAt(i);
 		}
 
 
 		// ------ Dead End Hallway Gen ------
 
-		List<IntVector2> deadEnds = [];
+
+		// Re-using outerbuffers again
+		//List<IntVector2> deadEnds = [];
 		for (k = 0; k < levelSize.x; k++)
 		{
 			for (int x9 = 0; x9 < levelSize.z; x9++)
 			{
 				var pos = new IntVector2(k, x9);
 				if (mapTiles[k, x9] != RoomType.None && MatchingAdjacentTiles(pos).Count == 1)
-					deadEnds.Add(pos);
+					outerBuffers.Add(pos);
 				
 			}
 		}
 
 
-		foreach (var tileController24 in deadEnds)
+		foreach (var tileController24 in outerBuffers)
 		{
 			bool success = true;
 			var list8 = MatchingAdjacentTiles(tileController24);
@@ -521,8 +560,10 @@ public partial class Generator // Makes it easier to make an instance of it. Mai
 		uncommonTags[1] = onedoorspcs.Any();
 
 		// -------------- Elevator Generation --------------
+		// Re-using tilesLabeled for it
 
-		bool[,] acceptExit = new bool[levelSize.x, levelSize.z];
+		//bool[,] acceptExit = new bool[levelSize.x, levelSize.z];
+		//tilesLabeled.Initialize(); // Resets to fals < no need anymore lol
 		tilesLabel.Initialize(); // Resets to 0
 		int label = 0;
 
@@ -534,9 +575,9 @@ public partial class Generator // Makes it easier to make an instance of it. Mai
 				for (int i = 0; i < specialRoom.Spots.Count; i++)
 				{
 					var pos = specialRoom.Spots[i];
-					if (acceptExit.InsideBounds(pos)) // For some reason this can happen and I haven't figured out because the seed wasn't logged ;-;
+					if (tilesLabel.InsideBounds(pos))
 					{
-						acceptExit[pos.x, pos.z] = true;
+						tilesLabeled[pos.x, pos.z] = true;
 						tilesLabel[pos.x, pos.z] = label;
 					}
 				}
@@ -544,10 +585,10 @@ public partial class Generator // Makes it easier to make an instance of it. Mai
 			}
 		}
 
-		halls.ForEach(hall => acceptExit[hall.x, hall.z] = true); // Halls obviously accept exists and have the label in 1 by default
-		
+		halls.ForEach(hall => tilesLabeled[hall.x, hall.z] = true); // Halls obviously accept exists and have the label in 1 by default
 
-		List<Direction> potentailExitDirections = [.. Directions.All()];
+
+		List<Direction> potentailExitDirections = Directions.AllList();
 		int exitCount = ld.ExitCount;
 		for (k = 0; k < exitCount; k++)
 		{
@@ -566,22 +607,22 @@ public partial class Generator // Makes it easier to make an instance of it. Mai
 				for (int num29 = num26; num29 <= num27; num29++)
 				{
 					IntVector2 intVector8 = direction3.GetOpposite().ToIntVector2();
-					IntVector2 intVector9 = default;
-					while (mapTiles.InsideBounds(new IntVector2(num28 + intVector9.x, num29 + intVector9.z)) && mapTiles[num28 + intVector9.x, num29 + intVector9.z] == RoomType.None)
+					IntVector2 vec = default;
+
+					while (IsTileNull(num28 + vec.x, num29 + vec.z))
+						vec += intVector8;
+					
+					
+					if (mapTiles.InsideBounds(num28 + vec.x, num29 + vec.z))
 					{
-						intVector9 += intVector8;
-					}
-					if (mapTiles.InsideBounds(new IntVector2(num28 + intVector9.x, num29 + intVector9.z)))
-					{
-						IntVector2 intVector10 = new(num28 + intVector9.x, num29 + intVector9.z);
+						IntVector2 intVector10 = new(num28 + vec.x, num29 + vec.z);
 						if (mapTiles[intVector10.x, intVector10.z] != RoomType.None)
 						{
 							var tileController11 = intVector10;
-							if (acceptExit[intVector10.x, intVector10.z])
+							if (tilesLabeled[intVector10.x, intVector10.z])
 							{
-                                List<Direction> list16 = direction3.PerpendicularList();
 								bool flag3 = true;
-								foreach (Direction direction4 in list16)
+								foreach (Direction direction4 in direction3.PerpendicularList())
 								{
 																	
 									
@@ -593,10 +634,10 @@ public partial class Generator // Makes it easier to make an instance of it. Mai
 								}
 								if (flag3)
 								{
-                                    if (ElevatorSpotFits(intVector10 + (direction3.ToIntVector2() * 2), direction3.GetOpposite(), mapTiles[tileController11.x, tileController11.z] | RoomType.Elevator))
-									{
+									if (ElevatorSpotFits(intVector10 + (direction3.ToIntVector2() * 2), direction3.GetOpposite(), mapTiles.GetItem(intVector10) | RoomType.Elevator))
 										list10.Add(intVector10 + direction3.ToIntVector2());
-									}
+                                    
+									
 									if (mapTiles[tileController11.x, tileController11.z] != RoomType.Hall)
 										flag2 = true;
 									
@@ -630,12 +671,12 @@ public partial class Generator // Makes it easier to make an instance of it. Mai
 				if (mapTiles[pos.x, pos.z] != RoomType.Hall)
 				{
                     int l = tilesLabel[pos.x, pos.z];
-					for (int i = 0; i < acceptExit.GetLength(0); i++)
+					for (int i = 0; i < tilesLabeled.GetLength(0); i++)
 					{
-						for (int j = 0; j < acceptExit.GetLength(1); j++)
+						for (int j = 0; j < tilesLabeled.GetLength(1); j++)
 						{
 							if (tilesLabel[i, j] == l)
-								acceptExit[i, j] = false; // Basically remove any tile that was accepting exits before
+								tilesLabeled[i, j] = false; // Basically remove any tile that was accepting exits before
 						}
 					}
 				}
@@ -649,7 +690,25 @@ public partial class Generator // Makes it easier to make an instance of it. Mai
 
 		// Field Trip Spawn Here
 
+		if (ld.FieldTrip)
+		{
+			IntVector2[] array4 = EdgeTiles(fieldTripDir);
 
+			fieldTripDir = fieldTripDir.GetOpposite(); // Opposite it for it to work (whyyyyyyyyyyyy)
+
+			List<IntVector2> list12 = [];
+			foreach (var tileController13 in array4)
+				if (IsTileNotNull(tileController13) && !IsTileEqual(tileController13, RoomType.Elevator) && FieldTripSuitable(tileController13, fieldTripDir) && tilesLabeled[tileController13.x, tileController13.z])
+					list12.Add(tileController13);
+
+
+			if (list12.Count > 0)
+				CreateFieldTrip(list12[_controlledRNG.Next(0, list12.Count)], fieldTripDir);
+			else
+				uncommonTags[2] = true;
+				
+			
+		}
 
 
 		// Field Trip Spawn Done
@@ -708,7 +767,7 @@ public partial class Generator // Makes it easier to make an instance of it. Mai
 
 		// Door operation here, I'll just make it save the adjacent rooms, that's necessary
 
-		UpdateTileReferences([.. rooms]);
+		UpdateTileReferences(rooms);
 
 		foreach (var room in rooms)
 		{
@@ -732,10 +791,7 @@ public partial class Generator // Makes it easier to make an instance of it. Mai
            
         }
 
-		foreach (var ev in eventsToLaunch)
-		{
-			ev.ClaimARoom(potentialClassRooms, this);
-		}
+		eventsToLaunch.ForEach(ev => ev.ClaimARoom(potentialClassRooms, this));
 
 		officeRoomCount = Math.Min(officeRoomCount, potentialClassRooms.Count);
 		for (k = 0; k < officeRoomCount; k++)
@@ -752,18 +808,15 @@ public partial class Generator // Makes it easier to make an instance of it. Mai
 		int classRoomCount = Math.Min(ogclassRoomCount, potentialClassRooms.Count);
 		for (k = 0; k < classRoomCount; k++)
 		{
-			for (int num28 = 0; num28 < potentialClassRooms.Count; num28++)
+			potentialClassRooms.ForEach((cs) =>
 			{
-				potentialClassRooms[num28].weight = 1;
-				foreach (var roomController3 in classRooms)
-				{
-					potentialClassRooms[num28].weight += (int)Math.Round(Math.Pow(Math.Abs((RealRoomMid(roomController3) - RealRoomMid(potentialClassRooms[num28].selection)).Magnitude() / 10f), ld.ClassDistanceWeightExponent));
-				}
+				cs.weight = 1;
+				classRooms.ForEach(c => cs.weight += (int)Math.Round(Math.Pow(Math.Abs((RealRoomMid(c) - RealRoomMid(cs.selection)).Magnitude() / 10f), ld.ClassDistanceWeightExponent)));
+			});
 
-				
-			}
-			var roomController4 = WeightedSelection<Room>.ControlledRandomSelection(_controlledRNG, [.. potentialClassRooms]);
+			var roomController4 = WeightedSelection<Room>.ControlledRandomSelection_List(_controlledRNG, potentialClassRooms);
 			classRooms.Add(roomController4);
+
 			for (int num29 = 0; num29 < potentialClassRooms.Count; num29++)
 			{
 				if (potentialClassRooms[num29].selection == roomController4)
@@ -772,12 +825,13 @@ public partial class Generator // Makes it easier to make an instance of it. Mai
 					break;
 				}
 			}
+
 			roomController4.Type = RoomType.Classroom;
 
 			_controlledRNG.Next(); // another builder selection
 		}
 
-        UpdateTiles([.. classRooms]);
+        UpdateTiles(classRooms);
 
 		if (classRooms.Count < ogclassRoomCount)
 			type |= SeedType.Glitched;
@@ -836,7 +890,7 @@ public partial class Generator // Makes it easier to make an instance of it. Mai
 		data.Add($"Notebooks: 0/{classRooms.Count} {(type.HasFlag(SeedType.Glitched) && !hasMystery ? "(APR) " : string.Empty)}{(type.HasFlag(SeedType.Glitched) ? "-- IT IS A GLITCHED SEED!!" : string.Empty)}");
 		data.Add($"Faculties: {facultyRoomCount}");
 		data.Add("Seed Tags: " + type.ToString());
-
+		
         return new SeedToken(type, classRooms.Count, !hasMystery, [.. data]); // SeedType.Normal is a temporary attribute, I'll change it to be dynamic
     }
 
@@ -847,14 +901,13 @@ public partial class Generator // Makes it easier to make an instance of it. Mai
 
 		var mapTileClone = mapTiles.Reverse2DArray();
 
-		for (int i = mapTileClone.GetLength(0) - 1; i > 0; i--) // Took me a while to figure all of this to display correctly the map inside the console
+		for (int i = mapTileClone.GetLength(0) - 1; i >= 0; i--) // Took me a while to figure all of this to display correctly the map inside the console
 		{
 			for (int j = 0; j < mapTileClone.GetLength(1); j++)
 			{
 				if (spawnSpot.z == i && spawnSpot.x == j)
-				{
 					Console.BackgroundColor = ConsoleColor.Cyan;
-				}
+				
 				else
 				{
 					switch (mapTileClone[i, j])
@@ -868,6 +921,7 @@ public partial class Generator // Makes it easier to make an instance of it. Mai
 						case RoomType.Classroom: Console.BackgroundColor = ConsoleColor.Red; break;
 						case RoomType.Faculty: Console.BackgroundColor = ConsoleColor.DarkYellow; break;
 						case RoomType.Office: Console.BackgroundColor = ConsoleColor.DarkGray; Console.ForegroundColor = ConsoleColor.Black; break;
+						case RoomType.FieldTripRoom: Console.BackgroundColor = ConsoleColor.Blue; break;
 
 
 						default:
@@ -923,6 +977,12 @@ public partial class Generator // Makes it easier to make an instance of it. Mai
 		Console.Write("  - Faculty");
 		Console.ResetColor();
 		Console.WriteLine();
+
+		Console.BackgroundColor = ConsoleColor.Blue;
+		Console.Write("  - Field Trip");
+		Console.ResetColor();
+		Console.WriteLine();
+
 		Console.WriteLine("(APR) = All Placeholder Rooms = No Mystery Room in the seed");
 		
 	}
@@ -930,110 +990,6 @@ public partial class Generator // Makes it easier to make an instance of it. Mai
 	readonly IntVector2[] poses = [];
 
 	const bool UseSymmetricalField = true;
-
-
-	public void UpdateTiles(params IRoomStructure[] rooms)
-	{
-		foreach (var room in rooms)
-		{
-			for (int i = 0; i < room.Spots.Count; i++)
-			{
-				var spot = room.Spots[i];
-				if (mapTiles.InsideBounds(spot))
-					mapTiles[spot.x, spot.z] = room.Type;
-			}
-		}
-	}
-
-	public void UpdateTileReferences(params Room[] rooms)
-	{
-		foreach (var room in rooms)
-		{
-			for (int i = 0; i < room.Spots.Count; i++)
-			{
-				if (roomTiles.InsideBounds(room.Spots[i]))
-					roomTiles[room.Spots[i].x, room.Spots[i].z] = room;
-				
-			}
-		}
-	}
-
-	private void ExpansionIterator<R>(int buffer, out List<R> structuresBack,params R[] rooms) where R : IRoomStructure
-	{
-		var rest = new List<R>();
-		structuresBack = rest;
-
-		if (rooms.Length == 0) return;
-
-		
-		List<R> plotsToExpand = new(rooms);
-		while (plotsToExpand.Count > 0)
-		{
-			for (int i = 0; i < plotsToExpand.Count; i++)
-			{
-                List<Direction> possibleDirections2 = GetPossibleDirections(plotsToExpand[i].Pos, plotsToExpand[i].Size, plotsToExpand[i].MaxSize, buffer);
-				if (possibleDirections2.Count > 0)
-				{
-					ExpandArea(plotsToExpand[i].Size, plotsToExpand[i].Pos, plotsToExpand[i].Type, possibleDirections2[_controlledRNG.Next(possibleDirections2.Count)], plotsToExpand[i].Spots, out var size, out var pos);
-					var copy = plotsToExpand[i]; // Structs are funny
-					copy.Pos = pos;
-					copy.Size = size;
-					plotsToExpand[i] = copy;
-				}
-				else
-				{
-					rest.Add(plotsToExpand[i]);
-					plotsToExpand.RemoveAt(i);
-					i--;
-				}
-			}
-		}
-	}
-
-	private void ExpansionIterator<R>(int buffer, params R[] rooms) where R : IRoomStructure
-	{
-
-		if (rooms.Length == 0) return;
-
-
-		List<R> plotsToExpand = new(rooms);
-		while (plotsToExpand.Count > 0)
-		{
-			for (int i = 0; i < plotsToExpand.Count; i++)
-			{
-				List<Direction> possibleDirections2 = GetPossibleDirections(plotsToExpand[i].Pos, plotsToExpand[i].Size, plotsToExpand[i].MaxSize, buffer);
-				if (possibleDirections2.Count > 0)
-				{
-					ExpandArea(plotsToExpand[i].Size, plotsToExpand[i].Pos, plotsToExpand[i].Type, possibleDirections2[_controlledRNG.Next(possibleDirections2.Count)], plotsToExpand[i].Spots, out var size, out var pos);
-					var copy = plotsToExpand[i]; // Structs are funny
-					copy.Pos = pos;
-					copy.Size = size;
-					plotsToExpand[i] = copy;
-				}
-				else
-				{
-					plotsToExpand.RemoveAt(i);
-					i--;
-				}
-			}
-		}
-	}
-
-	public void AddNewArea(IRoomStructure room, IntVector2 pos)
-	{
-		mapTiles[pos.x, pos.z] = room.Type;
-		room.Pos = pos;
-		room.Size = new IntVector2(1, 1);
-		room.Spots.Add(pos);
-	}
-
-    private void Internal_SkipRNGVals(int amount)
-    {
-        for (int i = 0; i < amount; i++)
-        {
-            _controlledRNG.Next();
-        }
-    }
 
 	// Stuff for initialization
 
@@ -1074,12 +1030,12 @@ public partial class Generator // Makes it easier to make an instance of it. Mai
 
 	IntVector2 levelSize;
 
-    List<WeightedSelection<IntVector2>> potentialRoomSpawns = [];
+    readonly List<WeightedSelection<IntVector2>> potentialRoomSpawns = [];
 
 	readonly List<IntVector2> halls = [];
 
 
-    internal IntVector2 RandomRoomSpawn => WeightedSelection<IntVector2>.ControlledRandomSelection(_controlledRNG, [.. potentialRoomSpawns]);
+    internal IntVector2 RandomRoomSpawn => WeightedSelection<IntVector2>.ControlledRandomSelection_List(_controlledRNG, potentialRoomSpawns);
 
 
 

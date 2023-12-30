@@ -1,6 +1,5 @@
 ﻿using BBP_Gen.Elements;
 using BBP_Gen.Misc;
-using System.Drawing;
 using System.Numerics;
 
 namespace BBP_Gen.PlusGenerator;
@@ -13,7 +12,7 @@ public partial class Generator // Partial class, so I can organize better, these
 
 	private void UpdatePotentialRoomSpawns(bool stickToHalls)
 	{
-		potentialRoomSpawns = [];
+		potentialRoomSpawns.Clear();
 		for (int i = ld.EdgeBuffer; i < levelSize.x - ld.EdgeBuffer; i++)
 		{
 			for (int j = ld.EdgeBuffer; j < levelSize.z - ld.EdgeBuffer; j++)
@@ -35,17 +34,15 @@ public partial class Generator // Partial class, so I can organize better, these
 						
 						foreach (var t in tileNeighbors)
 						{
-							if (mapTiles[t.x, t.z].HasFlag(RoomType.FieldTripRoom) || buffer[t.x, t.z] || mapTiles[t.x, t.z].HasFlag(RoomType.Elevator))
+							if (flag && (IsTileEqual(t, RoomType.FieldTripRoom) || buffer[t.x, t.z] || IsTileEqual(t, RoomType.Elevator)))
 							{
 								flag = false;
-								break;
 							}
 						}
 						
 						if (flag)
-						{
-							potentialRoomSpawns.Add(new(intVector, WeightFromPos(intVector)));
-						}
+                            potentialRoomSpawns.Add(new(intVector, WeightFromPos(intVector)));
+						
 					}
 				}
 			}
@@ -418,6 +415,7 @@ public partial class Generator // Partial class, so I can organize better, these
 		halls.Add(pos);
 	}
 
+
 	private List<Direction> PotentialPathDirections(IntVector2 pos)
 	{
 		List<Direction> list = [];
@@ -541,9 +539,9 @@ public partial class Generator // Partial class, so I can organize better, these
 		return IsTileNull(frontpos) && IsTileNull(frontpos + dir.PerpendicularList()[0].ToIntVector2()) && IsTileNull(frontpos + dir.PerpendicularList()[1].ToIntVector2()) && IsTileNull(pos)
 			&& IsTileEqual(moreFrontPos, type) && IsTileEqual(moreFrontPos + dir.PerpendicularList()[0].ToIntVector2(), type) && IsTileEqual(moreFrontPos + dir.PerpendicularList()[1].ToIntVector2(), type);
 	}
-
 	private bool IsTileNotNull(IntVector2 pos) => mapTiles.InsideBounds(pos) && mapTiles[pos.x, pos.z] != RoomType.None;
-
+	private bool IsTileNotNull(int x, int y) => mapTiles.InsideBounds(x, y) && mapTiles[x, y] != RoomType.None;
+	private bool IsTileNull(int x, int z) => mapTiles.InsideBounds(x, z) && mapTiles[x, z] == RoomType.None; // yeah just for it
 	private bool IsTileNull(IntVector2 pos) => mapTiles.InsideBounds(pos) && mapTiles[pos.x, pos.z] == RoomType.None;
 
 	private bool IsTileEqual(IntVector2 pos, RoomType match) => IsTileNotNull(pos) && match.HasFlag(mapTiles[pos.x, pos.z]);
@@ -735,6 +733,267 @@ public partial class Generator // Partial class, so I can organize better, these
 			}
 		}
 		return list2;
+	}
+
+
+
+
+	private IntVector2[] EdgeTiles(Direction dir)
+	{
+		IntVector2[] vectors;
+			bool[] array;
+		switch (dir)
+		{
+			case Direction.North:
+				vectors = new IntVector2[levelSize.x];
+				array = new bool[levelSize.x];
+				for (int i = levelSize.z - 1; i > 0; i--) // Yeah, very short looping lol
+					for (int j = 0; j < levelSize.x; j++)
+						if (mapTiles[j, i] != RoomType.None && !array[j])
+						{
+							vectors[j] = new(j, i);
+							array[j] = true;
+						}
+			return vectors;
+
+			case Direction.East:
+				vectors = new IntVector2[levelSize.z];
+				array = new bool[levelSize.z];
+				for (int i = levelSize.x - 1; i > 0; i--)
+					for (int j = 0; j < levelSize.z; j++)
+						if (mapTiles[i, j] != RoomType.None && !array[j])
+						{
+							vectors[j] = new(i, j);
+							array[j] = true;
+						}
+
+				return vectors;
+
+			case Direction.South:
+				vectors = new IntVector2[levelSize.x];
+				array = new bool[levelSize.x];
+
+				for (int i = 0; i < levelSize.z; i++)
+					for (int j = 0; j < levelSize.x; j++)
+						if (mapTiles[j, i] != RoomType.None && !array[j])
+						{
+							vectors[j] = new(j, i);
+							array[j] = true;
+						}
+
+
+
+				return vectors;
+
+			case Direction.West:
+				vectors = new IntVector2[levelSize.z];
+				array = new bool[levelSize.z];
+
+				for (int i = 0; i < levelSize.x; i++)
+					for (int j = 0; j < levelSize.z; j++)
+						if (mapTiles[i, j] != RoomType.None && !array[j])
+						{
+							vectors[j] = new(i, j);
+							array[j] = true;
+						}
+
+				return vectors;
+
+			default: return [];
+		}
+
+	}
+
+	void CreateFieldTrip(IntVector2 pos, Direction dir)
+	{
+		Room fieldTripRoom = new()
+		{
+			Type = RoomType.FieldTripRoom
+		};
+		AddNewArea(fieldTripRoom, pos - dir.ToIntVector2());
+		for (int z = 0; z <= 1; z++) // Loop to expand on both sides
+		{
+			for (int i = 0; i < 2; i++)
+			{
+				ExpandArea(fieldTripRoom.Size, fieldTripRoom.Pos, RoomType.FieldTripRoom, dir.PerpendicularList()[z], fieldTripRoom.Spots, out var nSize, out var nPos); // Expand on both sides
+				fieldTripRoom.Size = nSize;
+				fieldTripRoom.Pos = nPos;
+			}
+		}
+		for (int i = 0; i < 3; i++) // Expand backwards
+		{
+			ExpandArea(fieldTripRoom.Size, fieldTripRoom.Pos, RoomType.FieldTripRoom, dir.GetOpposite(), fieldTripRoom.Spots, out var nSize, out var nPos);
+			fieldTripRoom.Size = nSize;
+			fieldTripRoom.Pos = nPos;
+		}
+	}
+
+
+
+
+
+	// Methods that aren't from the game
+
+	public void UpdateTiles<R>(List<R> rooms) where R : IRoomStructure
+	{
+		foreach (var room in rooms)
+		{
+			UpdateTiles(room);
+		}
+	}
+
+	public void UpdateTiles<R>(R room) where R : IRoomStructure
+	{
+			for (int i = 0; i < room.Spots.Count; i++)
+			{
+				var spot = room.Spots[i];
+				if (mapTiles.InsideBounds(spot))
+					mapTiles[spot.x, spot.z] = room.Type;
+			}
+	}
+
+	public void UpdateTileReferences(List<Room> rooms)
+	{
+		foreach (var room in rooms)
+		{
+			UpdateTileReferences(room);
+		}
+	}
+
+	public void UpdateTileReferences(Room room)
+	{
+			for (int i = 0; i < room.Spots.Count; i++)
+			{
+				if (roomTiles.InsideBounds(room.Spots[i]))
+					roomTiles[room.Spots[i].x, room.Spots[i].z] = room;
+
+			}
+	}
+
+
+	private void ExpansionIterator_List<R>(int buffer, out List<R> structuresBack, List<R> rooms) where R : IRoomStructure
+	{
+		var rest = new List<R>();
+		structuresBack = rest;
+
+		if (rooms.Count == 0) return;
+
+
+		List<R> plotsToExpand = new(rooms);
+		while (plotsToExpand.Count > 0)
+		{
+			for (int i = 0; i < plotsToExpand.Count; i++)
+			{
+				List<Direction> possibleDirections2 = GetPossibleDirections(plotsToExpand[i].Pos, plotsToExpand[i].Size, plotsToExpand[i].MaxSize, buffer);
+				if (possibleDirections2.Count > 0)
+				{
+					ExpandArea(plotsToExpand[i].Size, plotsToExpand[i].Pos, plotsToExpand[i].Type, possibleDirections2[_controlledRNG.Next(possibleDirections2.Count)], plotsToExpand[i].Spots, out var size, out var pos);
+					var copy = plotsToExpand[i]; // Structs are funny
+					copy.Pos = pos;
+					copy.Size = size;
+					plotsToExpand[i] = copy;
+				}
+				else
+				{
+					rest.Add(plotsToExpand[i]);
+					plotsToExpand.RemoveAt(i);
+					i--;
+				}
+			}
+		}
+	}
+
+	private void ExpansionIterator_List<R>(int buffer, List<R> rooms) where R : IRoomStructure
+	{
+
+		if (rooms.Count == 0) return;
+
+
+		List<R> plotsToExpand = new(rooms);
+		while (plotsToExpand.Count > 0)
+		{
+			for (int i = 0; i < plotsToExpand.Count; i++)
+			{
+				List<Direction> possibleDirections2 = GetPossibleDirections(plotsToExpand[i].Pos, plotsToExpand[i].Size, plotsToExpand[i].MaxSize, buffer);
+				if (possibleDirections2.Count > 0)
+				{
+					ExpandArea(plotsToExpand[i].Size, plotsToExpand[i].Pos, plotsToExpand[i].Type, possibleDirections2[_controlledRNG.Next(possibleDirections2.Count)], plotsToExpand[i].Spots, out var size, out var pos);
+					var copy = plotsToExpand[i]; // Structs are funny
+					copy.Pos = pos;
+					copy.Size = size;
+					plotsToExpand[i] = copy;
+				}
+				else
+				{
+					plotsToExpand.RemoveAt(i);
+					i--;
+				}
+			}
+		}
+	}
+
+	private void ExpansionIterator<R>(int buffer, params R[] rooms) where R : IRoomStructure
+	{
+
+		if (rooms.Length == 0) return;
+
+
+		List<R> plotsToExpand = new(rooms);
+		while (plotsToExpand.Count > 0)
+		{
+			for (int i = 0; i < plotsToExpand.Count; i++)
+			{
+				List<Direction> possibleDirections2 = GetPossibleDirections(plotsToExpand[i].Pos, plotsToExpand[i].Size, plotsToExpand[i].MaxSize, buffer);
+				if (possibleDirections2.Count > 0)
+				{
+					ExpandArea(plotsToExpand[i].Size, plotsToExpand[i].Pos, plotsToExpand[i].Type, possibleDirections2[_controlledRNG.Next(possibleDirections2.Count)], plotsToExpand[i].Spots, out var size, out var pos);
+					var copy = plotsToExpand[i]; // Structs are funny
+					copy.Pos = pos;
+					copy.Size = size;
+					plotsToExpand[i] = copy;
+				}
+				else
+				{
+					plotsToExpand.RemoveAt(i);
+					i--;
+				}
+			}
+		}
+	}
+
+	public void AddNewArea(IRoomStructure room, IntVector2 pos)
+	{
+		mapTiles[pos.x, pos.z] = room.Type;
+		room.Pos = pos;
+		room.Size = new IntVector2(1, 1);
+		room.Spots.Add(pos);
+	}
+
+	private void Internal_SkipRNGVals(int amount)
+	{
+		for (int i = 0; i < amount; i++)
+		{
+			_controlledRNG.Next();
+		}
+	}
+
+
+	bool FieldTripSuitable(IntVector2 pos, Direction dir)
+	{
+		var startingPos = pos - dir.ToIntVector2() + dir.PerpendicularList()[0].ToIntVector2() * 2;
+
+		for (int i = 0; i < 5; i++) // x axis
+		{
+			for (int j = 0; j < 4; j++) // y axis
+			{
+				if (IsTileNotNull(startingPos)) return false;
+				startingPos -= dir.ToIntVector2(); // Basically, check backwards
+			}
+			startingPos += (dir.ToIntVector2() * 4) + dir.PerpendicularList()[1].ToIntVector2(); // Then go the way back and move 1 tile to the... right of the direction
+		}
+			
+		
+		return true;
 	}
 
 

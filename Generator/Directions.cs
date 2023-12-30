@@ -130,6 +130,17 @@ namespace BBP_Gen.PlusGenerator
 			];
 		}
 
+		public static List<Direction> AllList()
+		{
+			return
+			[
+				Direction.North,
+				Direction.East,
+				Direction.South,
+				Direction.West
+			];
+		}
+
 		public static void ReverseList(List<Direction> list)
 		{
 			for (int i = 0; i < list.Count; i++)

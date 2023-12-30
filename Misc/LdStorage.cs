@@ -40,21 +40,21 @@ internal static class LdStorage // Stores Level Objects
 		15
 		), 0);
 
-	public readonly static (LevelObject, int) Floor2 = (new(new MinMax<IntVector2>(new(30, 35), new(40, 45)), // Note: it's a Floor 3 copypaste, I just changed the npcs so I could include in the Floor 3 previousLevels
+	public readonly static (LevelObject, int) Floor2 = (new(new MinMax<IntVector2>(new(22, 27), new(30, 35)),
 		5,
-		new MinMax<int>(5, 8),
-		new MinMax<int>(3, 6),
-		new MinMax<int>(3, 5),
-		new MinMax<int>(3, 4),
-		false,
+		new MinMax<int>(4, 6),
+		new MinMax<int>(1, 2),
+		new MinMax<int>(1, 2),
+		new MinMax<int>(2, 2),
+		true,
 		new MinMax<int>(1, 1),
-		false,
+		true,
 		3,
 		new MinMax<IntVector2>(new(4, 5), new(6, 7)),
 		25f,
 		4f, // Huge list of events
-		[new(new GenericEvent("Broken Ruler"), 100), new(new PartyEvent(), 50), new(new GenericEvent("Fog"), 75), new(new MysteryRoomEvent(), 25), new(new GenericEvent("Test Procedure"), 100), new(new GenericEvent("Gravity Chaos"), 75)],
-		[new(new(new(new(10, 10), new(16, 16)), "Library"), 100), new(new(new(new(12, 12), new(18, 18)), "Playground"), 100), new(new(new(new(10, 10), new(15, 15)), "Cafeteria", acceptExits: true), 100)], // This is messed up lmao
+		[new(new GenericEvent("Broken Ruler"), 50), new(new PartyEvent(), 50), new(new GenericEvent("Flood"), 100), new(new MysteryRoomEvent(), 75), new(new GenericEvent("Gravity Chaos"), 75)],
+		[new(new(new(new(10, 10), new(16, 16)), "Library"), 100), new(new(new(new(12, 12), new(18, 18)), "Playground"), 100), new(new(new(new(10, 10), new(16, 16)), "Library"), 100)], // This is messed up lmao
 		4,
 		6,
 		5,
@@ -62,16 +62,16 @@ internal static class LdStorage // Stores Level Objects
 		3,
 		5,
 		6,
-		4,
+		2,
 		[Floor1.Item1],
 		[new("Arts and Crafters", 75), new("Bully", 100), new("Chalkles", 100), new("Cloudy Copter", 75), new("Gotta Sweep", 100), new("Playtime", 100), new("Beans", 100), new("Mrs Pomp", 75), new("First Prize", 75)],
 		[],
 		1,
-		new(9, 9),
-		new(7, 8),
+		new(7, 7),
+		new(5, 6),
 		new(1, 1),
 		1.5f,
-		15), 2);
+		15), 1);
 
 
 	public readonly static (LevelObject, int) Floor3 = (new(new MinMax<IntVector2>(new(30, 35), new(40, 45)),

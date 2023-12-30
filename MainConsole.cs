@@ -89,13 +89,13 @@ public class MainConsole // Program
 		while (true)
 		{
 			Console.Clear();
-            Console.WriteLine("Please, type the Floor you wanna begin on (0 - END, 1 - F1, 2 - F2 (not available), 3 - F3)");
+            Console.WriteLine("Please, type the Floor you wanna begin on (0 - END, 1 - F1, 2 - F2, 3 - F3)");
 
 			(LevelObject, int) obj;
 
 			if (int.TryParse(Console.ReadLine(), out int s) && s >= 0 && s <= 3)
 			{
-				obj = s == 0 ? LdStorage.END : s == 1 ? LdStorage.Floor1 : LdStorage.Floor3;
+				obj = s == 0 ? LdStorage.END : s == 1 ? LdStorage.Floor1 : s == 2 ? LdStorage.Floor2 : LdStorage.Floor3;
 			}
 			else
 			{
@@ -169,7 +169,7 @@ public class MainConsole // Program
 		while (true)
 		{
 			Console.Clear();
-			Console.WriteLine("Please, type the Floor you wanna begin on (0 - END, 1 - F1, 2 - F2 (not available), 3 - F3) // Type \'l\' to leave");
+			Console.WriteLine("Please, type the Floor you wanna begin on (0 - END, 1 - F1, 2 - F2, 3 - F3) // Type \'l\' to leave");
             Console.WriteLine("Upon running this tool, you'll only be able to close it from the window or if you manage to reach the maximum integer value");
             Console.WriteLine($"Don\'t worry, all seed types are stored on dumps localized on: {Path.Combine(defaultDumpDirectoryName, dirName)}");
             Console.WriteLine("When a seed is found, it\'ll dump the seed into th designed file (the folder will begin empty, but will gradually fill with the files)");
@@ -181,7 +181,7 @@ public class MainConsole // Program
 
 			if (int.TryParse(str, out int s) && s >= 0 && s <= 3)
 			{
-				obj = s == 0 ? LdStorage.END : s == 1 ? LdStorage.Floor1 : LdStorage.Floor3;
+				obj = s == 0 ? LdStorage.END : s == 1 ? LdStorage.Floor1 : s == 2 ? LdStorage.Floor2 : LdStorage.Floor3;
 				floor = s == 0 ? "END" : $"F{s}";
 			}
 			else if (str?.ToLower() == "l")
@@ -346,7 +346,7 @@ public class MainConsole // Program
 				switch (num)
 				{
 					case 1:
-                        Console.WriteLine("Set a new number of threads (limit: 1 - 5)");
+                        Console.WriteLine($"Set a new number of threads (limit: 1 - {Environment.ProcessorCount})");
 						if (int.TryParse(Console.ReadLine(), out num))
 							settInstance.AmountOfThreads = num;
 
@@ -366,8 +366,8 @@ public class MainConsole // Program
 	static readonly string[] descriptions =
 	[
 		"Visualize Seed - You can visualize a seed through this tool (a basic map drawn over the console)",
-		"Glitched Seed Searcher - It iterate through all seed until it finds 1 glitched seed",
-		"Settings - Basic settings for the Glitched Seed Finder"
+		"Seed Dumper - It iterate through all seeds on the game and dumps them in different files/categories",
+		"Settings - Basic settings"
 	];
 
 	static readonly Dictionary<int, Action> options = new()
@@ -381,8 +381,8 @@ public class MainConsole // Program
 
 	private sealed class Settings()
 	{
-		private int _amountOfThreads = 3;
-		public int AmountOfThreads { get => _amountOfThreads; set => _amountOfThreads = Math.Clamp(value, 1, 5); }
+		private int _amountOfThreads = 1;
+		public int AmountOfThreads { get => _amountOfThreads; set => _amountOfThreads = Math.Clamp(value, 1, Environment.ProcessorCount); }
 	}
 
 	const string defaultConfigPath = "settings.json", defaultSettingsSectionName = "Settings", defaultDumpDirectoryName = "dumps",
