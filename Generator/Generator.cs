@@ -1,6 +1,5 @@
 ﻿using BBP_Gen.Elements;
 using BBP_Gen.Misc;
-using System.Collections;
 
 namespace BBP_Gen.PlusGenerator;
 
@@ -9,7 +8,7 @@ public partial class Generator // Makes it easier to make an instance of it. Mai
     public Generator(int seed, int seedOffset, LevelObject levelObj) =>
         (_seed, _seedOffset, ld) = (seed, seedOffset, levelObj);
 
-	public SeedToken BeginGeneration(bool onlyGlitchedMode = false)
+	public SeedToken BeginGeneration(bool onlyGlitchedMode = false, string floor = "")
     {
 		
         
@@ -553,11 +552,17 @@ public partial class Generator // Makes it easier to make an instance of it. Mai
 
 			}
 		}
+		IEnumerable<SpecialRoomCreator> oobspcs = Enumerable.Empty<SpecialRoomCreator>();
 
-		var oobspcs = specialRoomsToExpand.Where(s => CheckBigRoomSides(s) == 0); // OOB Check here
-		var onedoorspcs = specialRoomsToExpand.Where(s => CheckBigRoomSides(s) == 1); // 1 door to bigroom Check here
+		if (floor == "F3") // Only happens in F3 anyways
+			oobspcs = specialRoomsToExpand.Where(s => CheckBigRoomSides(s) == 0); // OOB Check here
 
-		uncommonTags[1] = onedoorspcs.Any();
+		IEnumerable<SpecialRoomCreator> onedoorspcs = Enumerable.Empty<SpecialRoomCreator>();
+		if (!Main.MainConsole.AllSettings.Disallow_1DoorAtBigroom_InF3)
+		{
+			onedoorspcs = specialRoomsToExpand.Where(s => CheckBigRoomSides(s) == 1); // 1 door to bigroom Check here
+			uncommonTags[1] = onedoorspcs.Any();
+		}
 
 		// -------------- Elevator Generation --------------
 		// Re-using tilesLabeled for it
@@ -705,7 +710,7 @@ public partial class Generator // Makes it easier to make an instance of it. Mai
 			if (list12.Count > 0)
 				CreateFieldTrip(list12[_controlledRNG.Next(0, list12.Count)], fieldTripDir);
 			else
-				uncommonTags[2] = true;
+				uncommonTags[2] = true; // Missing Field Trip
 				
 			
 		}

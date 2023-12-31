@@ -18,11 +18,13 @@ public class MainConsole // Program
 			var sets = JsonConvert.DeserializeObject<Settings>(File.ReadAllText(defaultConfigPath));
 			if (sets is not null)
 				settInstance = sets;
+
+			SaveSettings();
 		}
-		catch (Exception e)
+		catch
 		{
-			Console.WriteLine(e.Message);
-			Console.WriteLine("Failed to load settings, using default settings...\n");
+			Console.WriteLine("Failed to load settings probably due to invalid syntax or corruption, using default settings...\n");
+			SaveSettings();
 			Console.WriteLine("Press any key to initialize the tool...");
 
 			Console.ReadKey();
@@ -270,7 +272,7 @@ public class MainConsole // Program
 						try
 						{
 
-							var token = gen.BeginGeneration(true);
+							var token = gen.BeginGeneration(true, floor);
 
 
 							if (token.Type.HasFlag(SeedType.Glitched))
@@ -338,7 +340,7 @@ public class MainConsole // Program
 
 			Console.WriteLine("Enter a number to flip one of the switches available");
 
-			Console.WriteLine($"[1] - Thread Number: {settInstance.AmountOfThreads}\n[0] - Exit");
+			Console.WriteLine($"[1] - Dumper Thread Number: {settInstance.AmountOfThreads}\n[2] - Disallow 1 door to bigroom logging on F3: {settInstance.Disallow_1DoorAtBigroom_InF3}\n[0] - Exit");
 
 			Console.WriteLine("\nType a number here:");
 			if (int.TryParse(Console.ReadLine(), out int num))
@@ -346,19 +348,26 @@ public class MainConsole // Program
 				switch (num)
 				{
 					case 1:
-                        Console.WriteLine($"Set a new number of threads (limit: 1 - {Environment.ProcessorCount})");
+                        Console.WriteLine($"Set a new number of threads for the dumper (limit: 1 - {Environment.ProcessorCount})");
 						if (int.TryParse(Console.ReadLine(), out num))
 							settInstance.AmountOfThreads = num;
-
-						SaveSettings();
                         break;
 
 					case 0:
 					return; // Leaves
 
-					default:
+					case 2:
+						Console.WriteLine($"Should 1 door to bigroom logging be disabled on F3? (y/n)");
+						settInstance.Disallow_1DoorAtBigroom_InF3 = Console.ReadLine()?.ToLower() == "y";
+
+						break;
+                        
+                    default:
 						break; // Does nothing
 				}
+
+				if (num > 0)
+					SaveSettings(); // Will happen anyway
 			}
 		}
 	}
@@ -367,7 +376,7 @@ public class MainConsole // Program
 	[
 		"Visualize Seed - You can visualize a seed through this tool (a basic map drawn over the console)",
 		"Seed Dumper - It iterate through all seeds on the game and dumps them in different files/categories",
-		"Settings - Basic settings"
+		"Settings - Seed Dumper Settings"
 	];
 
 	static readonly Dictionary<int, Action> options = new()
@@ -379,10 +388,14 @@ public class MainConsole // Program
 
 	static Settings settInstance = new();
 
-	private sealed class Settings()
+	public static Settings AllSettings => settInstance;
+
+	public sealed class Settings()
 	{
 		private int _amountOfThreads = 1;
 		public int AmountOfThreads { get => _amountOfThreads; set => _amountOfThreads = Math.Clamp(value, 1, Environment.ProcessorCount); }
+
+		public bool Disallow_1DoorAtBigroom_InF3 { get; set; } = false;
 	}
 
 	const string defaultConfigPath = "settings.json", defaultSettingsSectionName = "Settings", defaultDumpDirectoryName = "dumps",
