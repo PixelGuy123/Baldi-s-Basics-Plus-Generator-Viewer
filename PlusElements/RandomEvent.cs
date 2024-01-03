@@ -62,6 +62,6 @@ public class MysteryRoomEvent() : RandomEvent("Mystery Room")
 			return;
 		}
 
-		throw new SeedCrashException(gen.Seed, SeedCrashType.MysteryRoomCrash); // If it fails to get a room
+		throw new SeedCrashException("Mystery Room Crash"); // If it fails to get a room
 	}
 }

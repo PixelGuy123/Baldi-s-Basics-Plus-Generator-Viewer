@@ -127,7 +127,7 @@ public class MainConsole // Program
 				{
 					w.Stop();
 					Console.BackgroundColor = ConsoleColor.Red;
-                    Console.WriteLine(e.Message);
+                    Console.WriteLine("Seed has crashed, type of crash: " + e.Message);
 					Console.ResetColor();
 
                     Console.WriteLine("Still wanna render the seed map? (y/n)");
@@ -264,57 +264,121 @@ public class MainConsole // Program
 					];
 				uint numToLog = seedLogOffset;
 
-				for (;s < int.MaxValue; s+= settInstance.AmountOfThreads)
+				for (int i = 0; i < settInstance.AmountOfThreads - 1; i++) // Begin the side-threads
 				{
-					Parallel.For(s, s + settInstance.AmountOfThreads, x =>
+					var t = new Thread((x) => // Creates a new thread
 					{
-						var gen = new Generator(x, obj.Item2, obj.Item1);
-						try
+						if (x is not int)
+							return;
+                        
+                        int offset = (int)x + 1;
+
+						for (int seed = s + offset; seed < int.MaxValue; seed += settInstance.AmountOfThreads) // += settInstance.AmountOfThreads
 						{
 
-							var token = gen.BeginGeneration(true, floor);
-
-
-							if (token.Type.HasFlag(SeedType.Glitched))
-								Log(paths[0], $"{x}\t{floor}\t::::\t0/{token.AmountOfNotebooks}\t{time.Month}/{time.Day}/{time.Year}{(token.IsAPR ? "\t(APR)" : string.Empty)}"); // :::: is for name btw...
-							
-							
-							
-
-							System.Text.StringBuilder sb = new();
-							if (token.Data is not null)
+							var gen = new Generator(seed, obj.Item2, obj.Item1);
+							try
 							{
-								for (int i = 0; i < token.Data.Length; i++)
-									sb.Append($"{token.Data[i]}{(i < token.Data.Length - 1 ? '/' : string.Empty)}");
-								
+							//	var sw = Stopwatch.StartNew();
+								var token = gen.BeginGeneration(true, floor);
+							//	sw.Stop();
+							//	Console.Write($"\rTHREAD {offset}: Seed: {seed} generated within {sw.ElapsedMilliseconds}ms \t\t");
+
+								if (token.Type.HasFlag(SeedType.Glitched))
+									Log(paths[0], $"{seed}\t{floor}\t::::\t0/{token.AmountOfNotebooks}\t{time.Month}/{time.Day}/{time.Year}{(token.IsAPR && floor != "F1" ? "\t(APR)" : string.Empty)}"); // :::: is for name btw...
+
+
+
+
+								System.Text.StringBuilder sb = new();
+								if (token.Data is not null)
+								{
+									for (int i = 0; i < token.Data.Length; i++)
+										sb.Append($"{token.Data[i]}{(i < token.Data.Length - 1 ? " | " : string.Empty)}");
+
+								}
+
+								if (token.Type.HasFlag(SeedType.OOB))
+									Log(paths[1], $"{seed}\t{floor}\t::::\t{sb}\t{time.Month}/{time.Day}/{time.Year}");
+
+								if (token.Type.HasFlag(SeedType.Uncommon))
+									Log(paths[3], $"{seed}\t{floor}\t::::\t{time.Month}/{time.Day}/{time.Year}\t{sb}");
+
+							}
+							catch (SeedCrashException e)
+							{
+								Log(paths[2], $"{seed}\t{floor}\t::::\t{e.Message}\t{time.Month}/{time.Day}/{time.Year}");
+							}
+							catch (Exception e)
+							{
+								Console.WriteLine();
+								Console.WriteLine($"Undentified error found on seed: {seed}");
+								Console.WriteLine(e);
 							}
 
-							if (token.Type.HasFlag(SeedType.OOB))
-								Log(paths[1], $"{x}\t{floor}\t::::\t{sb}\t{time.Month}/{time.Day}/{time.Year}");
-
-							if (token.Type.HasFlag(SeedType.Uncommon))
-								Log(paths[3], $"{x}\t{floor}\t::::\t{time.Month}/{time.Day}/{time.Year}\t{sb}");
-								
 						}
-						catch (SeedCrashException e)
-						{
-							Log(paths[2], $"{x}\t{floor}\t::::\t{e.GetType()}\t{time.Month}/{time.Day}/{time.Year}");
-						}
-						catch (Exception e)
-						{
-							Console.WriteLine();
-							Console.WriteLine($"Undentified error found on seed: {x}");
-							Console.WriteLine(e);
-                        }
 						
 					});
+					t.Start(i);
+				}
+				// Main Thread Now
+				for (; s < int.MaxValue; s += settInstance.AmountOfThreads) // += settInstance.AmountOfThreads
+				{
+
+					var gen = new Generator(s, obj.Item2, obj.Item1);
+					try
+					{
+
+						//var sw = Stopwatch.StartNew();
+						var token = gen.BeginGeneration(true, floor);
+						//sw.Stop();
+						//Console.Write($"\rTHREAD 0: Seed: {s} generated within {sw.ElapsedMilliseconds}ms \t\t");
+
+
+						if (token.Type.HasFlag(SeedType.Glitched))
+							Log(paths[0], $"{s}\t{floor}\t::::\t0/{token.AmountOfNotebooks}\t{time.Month}/{time.Day}/{time.Year}{(token.IsAPR && floor != "F1" ? "\t(APR)" : string.Empty)}"); // :::: is for name btw...
+
+
+
+
+						System.Text.StringBuilder sb = new();
+						if (token.Data is not null)
+						{
+							for (int i = 0; i < token.Data.Length; i++)
+								sb.Append($"{token.Data[i]}{(i < token.Data.Length - 1 ? " | " : string.Empty)}");
+
+						}
+
+						if (token.Type.HasFlag(SeedType.OOB))
+							Log(paths[1], $"{s}\t{floor}\t::::\t{sb}\t{time.Month}/{time.Day}/{time.Year}");
+
+						if (token.Type.HasFlag(SeedType.Uncommon))
+							Log(paths[3], $"{s}\t{floor}\t::::\t{time.Month}/{time.Day}/{time.Year}\t{sb}");
+
+					}
+					catch (SeedCrashException e)
+					{
+						Log(paths[2], $"{s}\t{floor}\t::::\t{e.Message}\t{time.Month}/{time.Day}/{time.Year}");
+					}
+					catch (Exception e)
+					{
+						Console.WriteLine();
+						Console.WriteLine($"Undentified error found on seed: {s}");
+						Console.WriteLine(e);
+					}
+
 					numToLog += (uint)settInstance.AmountOfThreads;
 					if (numToLog >= seedLogOffset)
 					{
 						Console.Write("\rCurrent seed: {0} (Updates each {1} seeds)", s, seedLogOffset);
 						numToLog = 0u;
+						//GC.Collect();
 					}
 				}
+
+				
+
+
 
 				Console.WriteLine();
 				Console.WriteLine("Do you want to do another search? (y/n)");

@@ -342,7 +342,7 @@ public partial class Generator // Makes it easier to make an instance of it. Mai
 								}
 							}
 							if (++attempts > 10000)
-								throw new SeedCrashException(Seed, SeedCrashType.HallCrash);
+								throw new SeedCrashException("Hall Crash");
 							
 						}
 					}
@@ -558,7 +558,7 @@ public partial class Generator // Makes it easier to make an instance of it. Mai
 			oobspcs = specialRoomsToExpand.Where(s => CheckBigRoomSides(s) == 0); // OOB Check here
 
 		IEnumerable<SpecialRoomCreator> onedoorspcs = Enumerable.Empty<SpecialRoomCreator>();
-		if (!Main.MainConsole.AllSettings.Disallow_1DoorAtBigroom_InF3)
+		if (!Main.MainConsole.AllSettings.Disallow_1DoorAtBigroom_InF3 || floor != "F3") //how did I forget to exclude non-F3 levels
 		{
 			onedoorspcs = specialRoomsToExpand.Where(s => CheckBigRoomSides(s) == 1); // 1 door to bigroom Check here
 			uncommonTags[1] = onedoorspcs.Any();
@@ -592,7 +592,7 @@ public partial class Generator // Makes it easier to make an instance of it. Mai
 
 		halls.ForEach(hall => tilesLabeled[hall.x, hall.z] = true); // Halls obviously accept exists and have the label in 1 by default
 
-
+		uint exits = 0;
 		List<Direction> potentailExitDirections = Directions.AllList();
 		int exitCount = ld.ExitCount;
 		for (k = 0; k < exitCount; k++)
@@ -667,11 +667,12 @@ public partial class Generator // Makes it easier to make an instance of it. Mai
 					}
 				}
 				if (list10.Count == 0)
-					throw new SeedCrashException(Seed, SeedCrashType.ElevatorCrash);
+					throw new SeedCrashException("Elevator Crash");
 
 				int num31 = _controlledRNG.Next(0, list10.Count);
 				var pos = list10[num31];
 				CreateElevator(pos - direction3.GetOpposite().ToIntVector2(), direction3.GetOpposite(), k == 0);
+				exits++; // Increases the exit amount
 				pos += direction3.GetOpposite().ToIntVector2();
 				if (mapTiles[pos.x, pos.z] != RoomType.Hall)
 				{
@@ -692,6 +693,8 @@ public partial class Generator // Makes it easier to make an instance of it. Mai
 				exitCount = Math.Min(exitCount, potentailExitDirections.Count);
 			}
 		}
+
+		uncommonTags[3] = ld.ExitCount > exits; // if the og amount is higher, an elevator is missing
 
 		// Field Trip Spawn Here
 
@@ -857,6 +860,9 @@ public partial class Generator // Makes it easier to make an instance of it. Mai
 		if (uncommonTags[2])
 			data2.Add("Missing Field Trip"); // Yes, bunch of adds here
 
+		if (uncommonTags[3])
+			data2.Add($"{exits}/{ld.ExitCount} Elevators");
+
 		if (onlyGlitchedMode)
 			return new SeedToken(type, classRooms.Count, !hasMystery, [.. data2]);
 
@@ -890,7 +896,7 @@ public partial class Generator // Makes it easier to make an instance of it. Mai
 		data.Add($"Level Size: {levelSize.x},{levelSize.z}");
 		eventsToLaunch.ForEach(e => data.Add($"Event Available: {e.Name}"));
 		specialRoomsToExpand.ForEach(specialRoom => data.Add($"Special Room Data: {specialRoom.Name} with size: {specialRoom.MaxSize} on Pos: {specialRoom.Pos}"));
-		data.Add($"Elevators: {exitCount}/{ld.ExitCount}");
+		data.Add($"Elevators: {exits}/{ld.ExitCount}");
 		data.Add("-------- Room Gen Data --------");
 		data.Add($"Notebooks: 0/{classRooms.Count} {(type.HasFlag(SeedType.Glitched) && !hasMystery ? "(APR) " : string.Empty)}{(type.HasFlag(SeedType.Glitched) ? "-- IT IS A GLITCHED SEED!!" : string.Empty)}");
 		data.Add($"Faculties: {facultyRoomCount}");
@@ -954,7 +960,7 @@ public partial class Generator // Makes it easier to make an instance of it. Mai
 		Console.WriteLine();
 		
 		Console.BackgroundColor = ConsoleColor.Gray; Console.ForegroundColor = ConsoleColor.Black;
-		Console.Write("  - Elevator (Cyan if it is the Player\'s spawn");
+		Console.Write("  - Elevator");
 		Console.ResetColor();
 		Console.WriteLine();
 		
@@ -964,7 +970,7 @@ public partial class Generator // Makes it easier to make an instance of it. Mai
 		Console.WriteLine();
 		
 		Console.BackgroundColor = ConsoleColor.Cyan; Console.ForegroundColor = ConsoleColor.Black;
-		Console.Write("  - Placeholder Room");
+		Console.Write("  - Placeholder Room or Player\'s Spawn");
 		Console.ResetColor();
 		Console.WriteLine();
 		
@@ -1008,7 +1014,7 @@ public partial class Generator // Makes it easier to make an instance of it. Mai
 
 	IntVector2 spawnSpot = default;
 
-	readonly bool[] uncommonTags = new bool[3]; // in order: 1-way wall, 1 door to bigroom, field trip
+	readonly bool[] uncommonTags = new bool[4]; // in order: 1-way wall, 1 door to bigroom, field trip, missing elevator
 
 	readonly Room hall = new()
 	{
