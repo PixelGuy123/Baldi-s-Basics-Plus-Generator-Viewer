@@ -331,7 +331,7 @@ public class MainConsole // Program
 						}
 
 					});
-					//t.Start(i);
+					t.Start(i);
 				}
 				// Main Thread Now
 				for (; s < int.MaxValue; s += settInstance.AmountOfThreads) // += settInstance.AmountOfThreads
