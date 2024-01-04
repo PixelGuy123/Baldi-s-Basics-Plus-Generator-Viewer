@@ -192,6 +192,8 @@ public partial class Generator // Makes it easier to make an instance of it. Mai
         {
             var chosen = WeightedSelection<SpecialRoomCreator>.ControlledRandomSelection(_controlledRNG, ld.SpecialRooms);
             var specialRoom = chosen;
+			specialRoom.Spots = []; // I had to reset this manually??
+			
             UpdatePotentialRoomSpawns(true);
             specialRoom.SetRandomValues(_controlledRNG);
             specialRoom.SetReferences(this);
@@ -714,8 +716,6 @@ public partial class Generator // Makes it easier to make an instance of it. Mai
 				CreateFieldTrip(list12[_controlledRNG.Next(0, list12.Count)], fieldTripDir);
 			else
 				uncommonTags[2] = true; // Missing Field Trip
-				
-			
 		}
 
 
@@ -941,9 +941,10 @@ public partial class Generator // Makes it easier to make an instance of it. Mai
 							break;
 					}
 				}
-
+#if DEBUG // Not needed on release
 				if (poses.Any(p => p.z == i && p.x == j))
 					Console.BackgroundColor = ConsoleColor.Blue;
+#endif
 
 				Console.Write($"{(UseSymmetricalField ? "  " : (buffer[j, i] ? "1" : (int)mapTileClone[i, j]) + ",")}"); // A very specific check lol
 
@@ -997,8 +998,9 @@ public partial class Generator // Makes it easier to make an instance of it. Mai
 		Console.WriteLine("(APR) = All Placeholder Rooms = No Mystery Room in the seed");
 		
 	}
-
+#if DEBUG
 	readonly IntVector2[] poses = [];
+#endif
 
 	const bool UseSymmetricalField = true;
 

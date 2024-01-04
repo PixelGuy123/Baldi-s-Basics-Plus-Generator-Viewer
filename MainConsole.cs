@@ -1,7 +1,7 @@
 ﻿using BBP_Gen.Misc;
 using BBP_Gen.PlusGenerator;
-using System.Diagnostics;
 using Newtonsoft.Json;
+using System.Diagnostics;
 
 namespace BBP_Gen.Main;
 
@@ -14,7 +14,7 @@ public class MainConsole // Program
 		{
 			if (!File.Exists(defaultConfigPath))
 				File.WriteAllText(defaultConfigPath, JsonConvert.SerializeObject(settInstance));
-			
+
 			var sets = JsonConvert.DeserializeObject<Settings>(File.ReadAllText(defaultConfigPath));
 			if (sets is not null)
 				settInstance = sets;
@@ -30,7 +30,7 @@ public class MainConsole // Program
 			Console.ReadKey();
 			Console.Clear();
 		}
-	
+
 	}
 
 	static void SaveSettings()
@@ -91,7 +91,7 @@ public class MainConsole // Program
 		while (true)
 		{
 			Console.Clear();
-            Console.WriteLine("Please, type the Floor you wanna begin on (0 - END, 1 - F1, 2 - F2, 3 - F3)");
+			Console.WriteLine("Please, type the Floor you wanna begin on (0 - END, 1 - F1, 2 - F2, 3 - F3)");
 
 			(LevelObject, int) obj;
 
@@ -117,7 +117,7 @@ public class MainConsole // Program
 				var gen = new Generator(s, obj.Item2, obj.Item1);
 				try
 				{
-					
+
 					var token = gen.BeginGeneration();
 					w.Stop();
 					token.Data?.WriteEverythingOnLine();
@@ -127,31 +127,31 @@ public class MainConsole // Program
 				{
 					w.Stop();
 					Console.BackgroundColor = ConsoleColor.Red;
-                    Console.WriteLine("Seed has crashed, type of crash: " + e.Message);
+					Console.WriteLine("Seed has crashed, type of crash: " + e.Message);
 					Console.ResetColor();
 
-                    Console.WriteLine("Still wanna render the seed map? (y/n)");
+					Console.WriteLine("Still wanna render the seed map? (y/n)");
 					if (Console.ReadLine()?.ToLower() == "y")
 						gen.DisplayGrid();
 				}
 				finally
 				{
-					Console.WriteLine($"Time to generate seed: {w.ElapsedMilliseconds}ms");			
+					Console.WriteLine($"Time to generate seed: {w.ElapsedMilliseconds}ms");
 				}
 
-                Console.WriteLine();
-                Console.WriteLine("Do you want to generate another seed? (y/n)");
+				Console.WriteLine();
+				Console.WriteLine("Do you want to generate another seed? (y/n)");
 
 				if (Console.ReadLine()?.ToLower() == "y")
 					continue;
 
-                break;
+				break;
 			}
 			else
 			{
-                Console.WriteLine("Invalid seed number, please try again...");
+				Console.WriteLine("Invalid seed number, please try again...");
 				Console.ReadKey();
-            }
+			}
 		}
 	}
 
@@ -160,8 +160,20 @@ public class MainConsole // Program
 
 		static void Log(string path, string log)
 		{
-			using StreamWriter w = new(path, true);
-			w.WriteLine(log);
+
+			lock (lockObj)
+			{
+				try
+				{
+					using StreamWriter w = new(path, true);
+					w.WriteLine(log);
+				}
+				catch (Exception e)
+				{
+					Console.WriteLine();
+					Console.WriteLine("Failed to log the seed due to: " + e.Message);
+				}
+			}
 		}
 
 		var time = DateTime.Now;
@@ -172,12 +184,12 @@ public class MainConsole // Program
 		{
 			Console.Clear();
 			Console.WriteLine("Please, type the Floor you wanna begin on (0 - END, 1 - F1, 2 - F2, 3 - F3) // Type \'l\' to leave");
-            Console.WriteLine("Upon running this tool, you'll only be able to close it from the window or if you manage to reach the maximum integer value");
-            Console.WriteLine($"Don\'t worry, all seed types are stored on dumps localized on: {Path.Combine(defaultDumpDirectoryName, dirName)}");
-            Console.WriteLine("When a seed is found, it\'ll dump the seed into th designed file (the folder will begin empty, but will gradually fill with the files)");
-            Console.WriteLine("Enter floor number here: ");
+			Console.WriteLine("Upon running this tool, you'll only be able to close it from the window or if you manage to reach the maximum integer value");
+			Console.WriteLine($"Don\'t worry, all seed types are stored on dumps localized on: {Path.Combine(defaultDumpDirectoryName, dirName)}");
+			Console.WriteLine("When a seed is found, it\'ll dump the seed into th designed file (the folder will begin empty, but will gradually fill with the files)");
+			Console.WriteLine("Enter floor number here: ");
 
-            (LevelObject, int) obj;
+			(LevelObject, int) obj;
 			var str = Console.ReadLine();
 			string floor;
 
@@ -270,19 +282,17 @@ public class MainConsole // Program
 					{
 						if (x is not int)
 							return;
-                        
-                        int offset = (int)x + 1;
+
+						int offset = (int)x + 1;
 
 						for (int seed = s + offset; seed < int.MaxValue; seed += settInstance.AmountOfThreads) // += settInstance.AmountOfThreads
 						{
-
-							var gen = new Generator(seed, obj.Item2, obj.Item1);
 							try
 							{
-							//	var sw = Stopwatch.StartNew();
-								var token = gen.BeginGeneration(true, floor);
-							//	sw.Stop();
-							//	Console.Write($"\rTHREAD {offset}: Seed: {seed} generated within {sw.ElapsedMilliseconds}ms \t\t");
+								//	var sw = Stopwatch.StartNew();
+								var token = new Generator(seed, obj.Item2, obj.Item1).BeginGeneration(true, floor);
+								//	sw.Stop();
+								//	Console.Write($"\rTHREAD {offset}: Seed: {seed} generated within {sw.ElapsedMilliseconds}ms \t\t");
 
 								if (token.Type.HasFlag(SeedType.Glitched))
 									Log(paths[0], $"{seed}\t{floor}\t::::\t0/{token.AmountOfNotebooks}\t{time.Month}/{time.Day}/{time.Year}{(token.IsAPR && floor != "F1" ? "\t(APR)" : string.Empty)}"); // :::: is for name btw...
@@ -304,6 +314,8 @@ public class MainConsole // Program
 								if (token.Type.HasFlag(SeedType.Uncommon))
 									Log(paths[3], $"{seed}\t{floor}\t::::\t{time.Month}/{time.Day}/{time.Year}\t{sb}");
 
+								token = null;
+
 							}
 							catch (SeedCrashException e)
 							{
@@ -317,20 +329,20 @@ public class MainConsole // Program
 							}
 
 						}
-						
+
 					});
-					t.Start(i);
+					//t.Start(i);
 				}
 				// Main Thread Now
 				for (; s < int.MaxValue; s += settInstance.AmountOfThreads) // += settInstance.AmountOfThreads
 				{
 
-					var gen = new Generator(s, obj.Item2, obj.Item1);
+
 					try
 					{
 
 						//var sw = Stopwatch.StartNew();
-						var token = gen.BeginGeneration(true, floor);
+						var token = new Generator(s, obj.Item2, obj.Item1).BeginGeneration(true, floor);
 						//sw.Stop();
 						//Console.Write($"\rTHREAD 0: Seed: {s} generated within {sw.ElapsedMilliseconds}ms \t\t");
 
@@ -376,7 +388,7 @@ public class MainConsole // Program
 					}
 				}
 
-				
+
 
 
 
@@ -398,7 +410,7 @@ public class MainConsole // Program
 
 	static void Setting()
 	{
-		while (true) 
+		while (true)
 		{
 			Console.Clear();
 
@@ -412,21 +424,21 @@ public class MainConsole // Program
 				switch (num)
 				{
 					case 1:
-                        Console.WriteLine($"Set a new number of threads for the dumper (limit: 1 - {Environment.ProcessorCount})");
+						Console.WriteLine($"Set a new number of threads for the dumper (limit: 1 - {Environment.ProcessorCount})");
 						if (int.TryParse(Console.ReadLine(), out num))
 							settInstance.AmountOfThreads = num;
-                        break;
+						break;
 
 					case 0:
-					return; // Leaves
+						return; // Leaves
 
 					case 2:
 						Console.WriteLine($"Should 1 door to bigroom logging be disabled on F3? (y/n)");
 						settInstance.Disallow_1DoorAtBigroom_InF3 = Console.ReadLine()?.ToLower() == "y";
 
 						break;
-                        
-                    default:
+
+					default:
 						break; // Does nothing
 				}
 
@@ -466,4 +478,6 @@ public class MainConsole // Program
 		glitchedSeedFileName = "GlitchedSeeds.txt", oobSeedFileName = "OutOfBoundsSeeds.txt", crashSeedFileName = "CrashSeeds.txt", uncommonSeedFileName = "UncommonSeeds.txt";
 
 	const int seedLogOffset = 500, dumpLimit = 5;
+
+	public readonly static object lockObj = new();
 }

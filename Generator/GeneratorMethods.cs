@@ -567,7 +567,7 @@ public partial class Generator // Partial class, so I can organize better, these
 		mapTiles[right.x, right.z] = RoomType.Elevator;
 	}
 
-	private RoomType[] RoomProximityList(IRoomStructure room, int buffer)
+	private HashSet<RoomType> RoomProximityList(IRoomStructure room, int buffer)
 	{
 		HashSet<RoomType> list = [];
 		var list2 = Directions.All();
@@ -587,10 +587,10 @@ public partial class Generator // Partial class, so I can organize better, these
 				}
 			}
 		}
-		return [.. list];
+		return list;
 	}
 
-	private IntVector2[] RoomProximityList_Ref(IRoomStructure room, int buffer)
+	private List<IntVector2> RoomProximityList_Ref(IRoomStructure room, int buffer)
 	{
 		List<IntVector2> list = [];
 		var list2 = Directions.All();
@@ -610,7 +610,7 @@ public partial class Generator // Partial class, so I can organize better, these
 				}
 			}
 		}
-		return [.. list];
+		return list;
 	}
 
 
