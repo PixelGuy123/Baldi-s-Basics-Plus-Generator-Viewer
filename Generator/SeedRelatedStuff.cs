@@ -16,4 +16,7 @@ public enum SeedType : uint
 	Uncommon = 1 << 3
 }
 
-public record SeedToken(SeedType Type, int AmountOfNotebooks, bool IsAPR = false, string[]? Data = null);
+public record SeedToken(bool Generated, SeedType Type, int AmountOfNotebooks, bool IsAPR = false, bool HasMirrorFeatures = false, string[]? Data = null)
+{
+	public static readonly SeedToken None = new(false, SeedType.None, 0);
+}

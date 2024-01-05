@@ -8,7 +8,7 @@ public partial class Generator // Makes it easier to make an instance of it. Mai
     public Generator(int seed, int seedOffset, LevelObject levelObj) =>
         (_seed, _seedOffset, ld) = (seed, seedOffset, levelObj);
 
-	public SeedToken BeginGeneration(bool onlyGlitchedMode = false, string floor = "")
+	public SeedToken BeginGeneration(bool onlyGlitchedMode = false, string floor = "", bool? mirrorFlag = null)
     {
 		
         
@@ -56,6 +56,10 @@ public partial class Generator // Makes it easier to make an instance of it. Mai
 				num++;
 			}
 		}
+
+		if (mirrorFlag is not null && npcs.Contains("Gotta Sweep") == mirrorFlag)
+			return SeedToken.None;
+		
 
 		// --End of npc stuff--
 
@@ -730,7 +734,9 @@ public partial class Generator // Makes it easier to make an instance of it. Mai
 
 		UpdatePotentialRoomSpawns(true);
 
-		if (npcs.Contains("Gotta Sweep")) // If sweep, janitor room!!
+		bool sweep = npcs.Contains("Gotta Sweep");
+
+		if (sweep) // If sweep, janitor room!!
 		{
 			var room = new Room
 			{
@@ -864,7 +870,7 @@ public partial class Generator // Makes it easier to make an instance of it. Mai
 			data2.Add($"{exits}/{ld.ExitCount} Elevators");
 
 		if (onlyGlitchedMode)
-			return new SeedToken(type, classRooms.Count, !hasMystery, [.. data2]);
+			return new SeedToken(true, type, classRooms.Count, !hasMystery, sweep, [.. data2]);
 
 		List<Room> facultyRooms = [];
 
@@ -901,8 +907,10 @@ public partial class Generator // Makes it easier to make an instance of it. Mai
 		data.Add($"Notebooks: 0/{classRooms.Count} {(type.HasFlag(SeedType.Glitched) && !hasMystery ? "(APR) " : string.Empty)}{(type.HasFlag(SeedType.Glitched) ? "-- IT IS A GLITCHED SEED!!" : string.Empty)}");
 		data.Add($"Faculties: {facultyRoomCount}");
 		data.Add("Seed Tags: " + type.ToString());
+		if (_seedOffset != 0)
+			data.Add($"Mirror Seed: {-(_seed + _seedOffset * 2)}");
 		
-        return new SeedToken(type, classRooms.Count, !hasMystery, [.. data]); // SeedType.Normal is a temporary attribute, I'll change it to be dynamic
+        return new SeedToken(true, type, classRooms.Count, !hasMystery, sweep, [.. data]); // SeedType.Normal is a temporary attribute, I'll change it to be dynamic
     }
 
 

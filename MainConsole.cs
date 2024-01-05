@@ -2,6 +2,7 @@
 using BBP_Gen.PlusGenerator;
 using Newtonsoft.Json;
 using System.Diagnostics;
+using System.Drawing;
 
 namespace BBP_Gen.Main;
 
@@ -179,6 +180,52 @@ public class MainConsole // Program
 		var time = DateTime.Now;
 		var dirName = $"dumpFolder-{time.Month}-{time.Day}-{time.Year}_{time.Hour}-{time.Minute}-{time.Second}";
 
+		void Generate(int s, (LevelObject, int) obj, string floor, string[] paths, bool? mirrorParameter = null)
+		{
+
+			try
+			{
+				var token = new Generator(s, obj.Item2, obj.Item1).BeginGeneration(true, floor, mirrorParameter);
+				
+
+				if (token.Type.HasFlag(SeedType.Glitched))
+					Log(paths[0], $"{s}\t{floor}\t::::\t0/{token.AmountOfNotebooks}\t{time.Month}/{time.Day}/{time.Year}{(token.IsAPR && floor != "F1" ? "\t(APR)" : string.Empty)}"); // :::: is for name btw...
+				else if (mirrorParameter is null && settInstance.Mirror_Check && obj.Item2 != 0) // Only check the mirror seeds if the current seed is normal
+					Generate(-(s + obj.Item2 * 2), obj, floor, paths, token.HasMirrorFeatures); // Calls itself again but with the parameters (mirroring the seed)
+
+
+
+
+
+
+				System.Text.StringBuilder sb = new();
+				if (token.Data is not null)
+				{
+					for (int i = 0; i < token.Data.Length; i++)
+						sb.Append($"{token.Data[i]}{(i < token.Data.Length - 1 ? " | " : string.Empty)}");
+
+				}
+
+				if (token.Type.HasFlag(SeedType.OOB))
+					Log(paths[1], $"{s}\t{floor}\t::::\t{sb}\t{time.Month}/{time.Day}/{time.Year}");
+
+				if (token.Type.HasFlag(SeedType.Uncommon))
+					Log(paths[3], $"{s}\t{floor}\t::::\t{time.Month}/{time.Day}/{time.Year}\t{sb}");
+					
+
+			}
+			catch (SeedCrashException e)
+			{
+				Log(paths[2], $"{s}\t{floor}\t::::\t{e.Message}\t{time.Month}/{time.Day}/{time.Year}");
+			}
+			catch (Exception e)
+			{
+				Console.WriteLine();
+				Console.WriteLine($"Undentified error found on seed: {s}");
+				Console.WriteLine(e);
+			}
+		}
+
 
 		while (true)
 		{
@@ -216,41 +263,7 @@ public class MainConsole // Program
 			if (response?.ToLower() == "r" || int.TryParse(response, out s))
 			{
 				Console.Clear();
-				/*	bool finished = false; Will leave unused for a while.. if I decide to re-use it again
-					while (!finished)
-					{
-						List<Task> tasks = [];
-
-						for (int i = 0; i < limits; i++) {
-
-							tasks.Add(Task.Run(() =>
-							{
-								var gen = new Generator(s++, obj.Item2, obj.Item1);
-								try
-								{
-
-									(bool found, var list) = gen.BeginGeneration(true);
-
-									if (found)
-									{
-										Console.WriteLine();
-										list.WriteEverythingOnLine();
-										gen.DisplayGrid();
-										finished = true;
-										return;
-									}
-								}
-								catch { } // Yup, ignore exceptions
-								Console.Write("\rCurrent Seed: {0} \t", s);
-
-							}));
-						}
-
-						Task.WaitAll([.. tasks]);
-
-						tasks.Clear();
-					}
-					*/
+			
 
 				// Create three files inside them (with using blocks, so they are disposed after being created)
 
@@ -286,49 +299,8 @@ public class MainConsole // Program
 						int offset = (int)x + 1;
 
 						for (int seed = s + offset; seed < int.MaxValue; seed += settInstance.AmountOfThreads) // += settInstance.AmountOfThreads
-						{
-							try
-							{
-								//	var sw = Stopwatch.StartNew();
-								var token = new Generator(seed, obj.Item2, obj.Item1).BeginGeneration(true, floor);
-								//	sw.Stop();
-								//	Console.Write($"\rTHREAD {offset}: Seed: {seed} generated within {sw.ElapsedMilliseconds}ms \t\t");
-
-								if (token.Type.HasFlag(SeedType.Glitched))
-									Log(paths[0], $"{seed}\t{floor}\t::::\t0/{token.AmountOfNotebooks}\t{time.Month}/{time.Day}/{time.Year}{(token.IsAPR && floor != "F1" ? "\t(APR)" : string.Empty)}"); // :::: is for name btw...
-
-
-
-
-								System.Text.StringBuilder sb = new();
-								if (token.Data is not null)
-								{
-									for (int i = 0; i < token.Data.Length; i++)
-										sb.Append($"{token.Data[i]}{(i < token.Data.Length - 1 ? " | " : string.Empty)}");
-
-								}
-
-								if (token.Type.HasFlag(SeedType.OOB))
-									Log(paths[1], $"{seed}\t{floor}\t::::\t{sb}\t{time.Month}/{time.Day}/{time.Year}");
-
-								if (token.Type.HasFlag(SeedType.Uncommon))
-									Log(paths[3], $"{seed}\t{floor}\t::::\t{time.Month}/{time.Day}/{time.Year}\t{sb}");
-
-								token = null;
-
-							}
-							catch (SeedCrashException e)
-							{
-								Log(paths[2], $"{seed}\t{floor}\t::::\t{e.Message}\t{time.Month}/{time.Day}/{time.Year}");
-							}
-							catch (Exception e)
-							{
-								Console.WriteLine();
-								Console.WriteLine($"Undentified error found on seed: {seed}");
-								Console.WriteLine(e);
-							}
-
-						}
+							Generate(seed, obj, floor, paths);
+						
 
 					});
 					t.Start(i);
@@ -337,47 +309,8 @@ public class MainConsole // Program
 				for (; s < int.MaxValue; s += settInstance.AmountOfThreads) // += settInstance.AmountOfThreads
 				{
 
-
-					try
-					{
-
-						//var sw = Stopwatch.StartNew();
-						var token = new Generator(s, obj.Item2, obj.Item1).BeginGeneration(true, floor);
-						//sw.Stop();
-						//Console.Write($"\rTHREAD 0: Seed: {s} generated within {sw.ElapsedMilliseconds}ms \t\t");
-
-
-						if (token.Type.HasFlag(SeedType.Glitched))
-							Log(paths[0], $"{s}\t{floor}\t::::\t0/{token.AmountOfNotebooks}\t{time.Month}/{time.Day}/{time.Year}{(token.IsAPR && floor != "F1" ? "\t(APR)" : string.Empty)}"); // :::: is for name btw...
-
-
-
-
-						System.Text.StringBuilder sb = new();
-						if (token.Data is not null)
-						{
-							for (int i = 0; i < token.Data.Length; i++)
-								sb.Append($"{token.Data[i]}{(i < token.Data.Length - 1 ? " | " : string.Empty)}");
-
-						}
-
-						if (token.Type.HasFlag(SeedType.OOB))
-							Log(paths[1], $"{s}\t{floor}\t::::\t{sb}\t{time.Month}/{time.Day}/{time.Year}");
-
-						if (token.Type.HasFlag(SeedType.Uncommon))
-							Log(paths[3], $"{s}\t{floor}\t::::\t{time.Month}/{time.Day}/{time.Year}\t{sb}");
-
-					}
-					catch (SeedCrashException e)
-					{
-						Log(paths[2], $"{s}\t{floor}\t::::\t{e.Message}\t{time.Month}/{time.Day}/{time.Year}");
-					}
-					catch (Exception e)
-					{
-						Console.WriteLine();
-						Console.WriteLine($"Undentified error found on seed: {s}");
-						Console.WriteLine(e);
-					}
+					Generate(s, obj, floor, paths);
+					
 
 					numToLog += (uint)settInstance.AmountOfThreads;
 					if (numToLog >= seedLogOffset)
@@ -416,7 +349,8 @@ public class MainConsole // Program
 
 			Console.WriteLine("Enter a number to flip one of the switches available");
 
-			Console.WriteLine($"[1] - Dumper Thread Number: {settInstance.AmountOfThreads}\n[2] - Disallow 1 door to bigroom logging on F3: {settInstance.Disallow_1DoorAtBigroom_InF3}\n[0] - Exit");
+			Console.WriteLine($"[1] - Dumper Thread Number: {settInstance.AmountOfThreads}\n[2] - Disallow 1 door to bigroom logging on F3: {settInstance.Disallow_1DoorAtBigroom_InF3}\n" +
+				$"[3] - Mirror Check: {settInstance.Mirror_Check}\n[0] - Exit");
 
 			Console.WriteLine("\nType a number here:");
 			if (int.TryParse(Console.ReadLine(), out int num))
@@ -438,7 +372,12 @@ public class MainConsole // Program
 
 						break;
 
-					default:
+					case 3:
+                        Console.WriteLine($"Toggle Mirror Check? (y/n)");
+						settInstance.Mirror_Check = Console.ReadLine()?.ToLower() == "y";
+						break;
+
+                    default:
 						break; // Does nothing
 				}
 
@@ -470,8 +409,8 @@ public class MainConsole // Program
 	{
 		private int _amountOfThreads = 1;
 		public int AmountOfThreads { get => _amountOfThreads; set => _amountOfThreads = Math.Clamp(value, 1, Environment.ProcessorCount); }
-
 		public bool Disallow_1DoorAtBigroom_InF3 { get; set; } = false;
+		public bool Mirror_Check { get; set; } = false;
 	}
 
 	const string defaultConfigPath = "settings.json", defaultSettingsSectionName = "Settings", defaultDumpDirectoryName = "dumps",
