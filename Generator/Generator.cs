@@ -574,7 +574,6 @@ public partial class Generator // Makes it easier to make an instance of it. Mai
 		// Re-using tilesLabeled for it
 
 		//bool[,] acceptExit = new bool[levelSize.x, levelSize.z];
-		//tilesLabeled.Initialize(); // Resets to fals < no need anymore lol
 		tilesLabel.Initialize(); // Resets to 0
 		int label = 0;
 
@@ -596,7 +595,7 @@ public partial class Generator // Makes it easier to make an instance of it. Mai
 			}
 		}
 
-		halls.ForEach(hall => tilesLabeled[hall.x, hall.z] = true); // Halls obviously accept exists and have the label in 1 by default
+		halls.ForEach(hall => tilesLabeled[hall.x, hall.z] = true); // Halls obviously accept exits and have the label in 1 by default
 
 		uint exits = 0;
 		List<Direction> potentailExitDirections = Directions.AllList();
@@ -730,7 +729,7 @@ public partial class Generator // Makes it easier to make an instance of it. Mai
 
 		// --------- Room Generation ---------
 
-		var rooms = new List<Room>();
+		List<Room> rooms = [];
 
 		UpdatePotentialRoomSpawns(true);
 
@@ -815,7 +814,7 @@ public partial class Generator // Makes it easier to make an instance of it. Mai
 			UpdateTiles(potentialClassRooms[num].selection); // Update tiles
 			potentialClassRooms.RemoveAt(num);
 
-			_controlledRNG.Next(); // For choosing builder
+			Internal_SkipRNGVals(2); // Instantiate random builder then setup it
 		}
 		List<Room> classRooms = [];
 
@@ -842,7 +841,7 @@ public partial class Generator // Makes it easier to make an instance of it. Mai
 
 			roomController4.Type = RoomType.Classroom;
 
-			_controlledRNG.Next(); // another builder selection
+			Internal_SkipRNGVals(2); // Instantiate random builder then setup it
 		}
 
         UpdateTiles(classRooms);
@@ -870,7 +869,7 @@ public partial class Generator // Makes it easier to make an instance of it. Mai
 			data2.Add($"{exits}/{ld.ExitCount} Elevators");
 
 		if (onlyGlitchedMode)
-			return new SeedToken(true, type, classRooms.Count, !hasMystery, sweep, [.. data2]);
+			return new SeedToken(true, type, classRooms.Count, !hasMystery && floor != "F1" && type.HasFlag(SeedType.Glitched), sweep, [.. data2]); // Make it specifically ignore F1
 
 		List<Room> facultyRooms = [];
 
@@ -881,6 +880,7 @@ public partial class Generator // Makes it easier to make an instance of it. Mai
 				facultyRooms.Add(roomController6);
 			}
 		}
+
 		facultyRoomCount = Math.Min(facultyRoomCount, facultyRooms.Count);
 		for (k = 0; k < facultyRoomCount; k++)
 		{
@@ -889,7 +889,7 @@ public partial class Generator // Makes it easier to make an instance of it. Mai
 			UpdateTiles(facultyRooms[num37]);
 			facultyRooms.RemoveAt(num37);
 
-			_controlledRNG.Next(); // Builder selection
+			Internal_SkipRNGVals(2); // Instantiate random builder then setup it
 		}
 
 		// Done
@@ -904,13 +904,13 @@ public partial class Generator // Makes it easier to make an instance of it. Mai
 		specialRoomsToExpand.ForEach(specialRoom => data.Add($"Special Room Data: {specialRoom.Name} with size: {specialRoom.MaxSize} on Pos: {specialRoom.Pos}"));
 		data.Add($"Elevators: {exits}/{ld.ExitCount}");
 		data.Add("-------- Room Gen Data --------");
-		data.Add($"Notebooks: 0/{classRooms.Count} {(type.HasFlag(SeedType.Glitched) && !hasMystery ? "(APR) " : string.Empty)}{(type.HasFlag(SeedType.Glitched) ? "-- IT IS A GLITCHED SEED!!" : string.Empty)}");
+		data.Add($"Notebooks: 0/{classRooms.Count} {(type.HasFlag(SeedType.Glitched) && !hasMystery && floor != "F1" ? "(APR) " : string.Empty)}{(type.HasFlag(SeedType.Glitched) ? "-- IT IS A GLITCHED SEED!!" : string.Empty)}");
 		data.Add($"Faculties: {facultyRoomCount}");
 		data.Add("Seed Tags: " + type.ToString());
 		if (_seedOffset != 0)
 			data.Add($"Mirror Seed: {-(_seed + _seedOffset * 2)}");
 		
-        return new SeedToken(true, type, classRooms.Count, !hasMystery, sweep, [.. data]); // SeedType.Normal is a temporary attribute, I'll change it to be dynamic
+        return new SeedToken(true, type, classRooms.Count, !hasMystery && floor != "F1" && type.HasFlag(SeedType.Glitched), sweep, [.. data]); // SeedType.Normal is a temporary attribute, I'll change it to be dynamic
     }
 
 
